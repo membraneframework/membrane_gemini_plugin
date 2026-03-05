@@ -1,5 +1,7 @@
 defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
-  use ExUnit.Case, async: false
+  # These tests exercise the mock server's API key validation.
+  # The mock server only accepts GEMINI_API_KEY="mock-api-key".
+  use Membrane.Gemini.Case
 
   import Membrane.ChildrenSpec
 
@@ -9,19 +11,42 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
     sample_format: :s16le
   }
 
-  defp pipeline_spec() do
+  @spec pipeline_spec(gemini_config :: Membrane.Gemini.Config.t()) :: [Membrane.ChildrenSpec.builder()]
+  defp pipeline_spec(gemini_config) do
     [
       child(:audio_source, %Membrane.Testing.Source{
         stream_format: @input_audio_format,
         output: []
       })
       |> via_in(:in_audio)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete})
+      |> child(:gemini, %Membrane.Gemini.Bin{
+        mode: :discrete,
+        config: gemini_config
+      })
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: ["Hello"]})
       |> via_in(:in_text)
       |> get_child(:gemini)
     ]
+  end
+
+  @spec run_pipeline_assert_crash(gemini_config :: Membrane.Gemini.Config.t()) :: any()
+  defp run_pipeline_assert_crash(gemini_config) do
+    {:ok, supervisor, pipeline} =
+      Membrane.Testing.Pipeline.start(spec: pipeline_spec(gemini_config))
+
+    pipeline_ref = Process.monitor(pipeline)
+    supervisor_ref = Process.monitor(supervisor)
+
+    assert_receive {:DOWN, ^pipeline_ref, :process, ^pipeline,
+                    {:membrane_child_crash, _child,
+                     {:membrane_child_crash, _inner_child, {%RuntimeError{}, _stacktrace}}}},
+                   6_000,
+                   "Pipeline should crash when API key is invalid"
+
+    assert_receive {:DOWN, ^supervisor_ref, :process, ^supervisor,
+                    {:membrane_child_crash, _child,
+                     {:membrane_child_crash, _inner_child, {%RuntimeError{}, _stacktrace}}}}
   end
 
   describe "API key validation" do
@@ -40,38 +65,14 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
       :ok
     end
 
-    test "pipeline fails when API key is missing" do
+    test "pipeline fails when API key is missing", %{gemini_config: gemini_config} = _ctx do
       System.delete_env("GEMINI_API_KEY")
-
-      {:ok, supervisor, pipeline} =
-        Membrane.Testing.Pipeline.start(spec: pipeline_spec())
-
-      pipeline_ref = Process.monitor(pipeline)
-      supervisor_ref = Process.monitor(supervisor)
-
-      assert_receive {:DOWN, ^pipeline_ref, :process, ^pipeline, _reason},
-                     5_000,
-                     "Pipeline should crash when API key is missing"
-
-      assert_receive {:DOWN, ^supervisor_ref, :process, ^supervisor, _reason}
+      run_pipeline_assert_crash(gemini_config)
     end
 
-    test "pipeline fails when API key is invalid" do
+    test "pipeline fails when API key is invalid", %{gemini_config: gemini_config} = _ctx do
       System.put_env("GEMINI_API_KEY", "invalid_key_12345")
-
-      {:ok, supervisor, pipeline} =
-        Membrane.Testing.Pipeline.start(spec: pipeline_spec())
-
-      supervisor_ref = Process.monitor(supervisor)
-      pipeline_ref = Process.monitor(pipeline)
-
-      assert_receive {:DOWN, ^pipeline_ref, :process, ^pipeline,
-                      {:membrane_child_crash, :gemini,
-                       {:membrane_child_crash, :gemini, {%RuntimeError{}, _stacktrace}}}},
-                     5_000,
-                     "Pipeline should crash when API key is invalid"
-
-      assert_receive {:DOWN, ^supervisor_ref, :process, ^supervisor, _reason}
+      run_pipeline_assert_crash(gemini_config)
     end
   end
 end

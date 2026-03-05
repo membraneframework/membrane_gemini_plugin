@@ -1,5 +1,5 @@
 defmodule Membrane.Gemini.Integration.SimpleTest do
-  use ExUnit.Case, async: false
+  use Membrane.Gemini.Case
 
   import Membrane.Testing.Assertions
   import Membrane.ChildrenSpec
@@ -10,14 +10,14 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
     sample_format: :s16le
   }
 
-  test "Gemini responds to a simple text prompt" do
+  test "Gemini responds to a simple text prompt", %{gemini_config: gemini_config} = _ctx do
     spec = [
       child(:audio_source, %Membrane.Testing.Source{
         stream_format: @input_audio_format,
         output: []
       })
       |> via_in(:in_audio)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete})
+      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete, config: gemini_config})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{
         output: ["Hello, world!"]
@@ -42,6 +42,7 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
   # $ ffmpeg -i hello.wav -ar 16000 -f s16le -acodec pcm_s16le test/fixtures/hello.raw
   @hello_raw_audio "./test/fixtures/hello.raw"
 
+  @tag :integration_only
   test "Gemini responds to a simple audio prompt" do
     # NOTE: `Membrane.Gemini.Bin` is aware that it sent a text prompt,
     # NOTE: but not an audio prompt, since it relies on the Live API server's

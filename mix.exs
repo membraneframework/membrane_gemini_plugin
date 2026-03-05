@@ -27,9 +27,7 @@ defmodule Membrane.Gemini.Mixfile do
   end
 
   def application do
-    [
-      extra_applications: []
-    ]
+    [extra_applications: []]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -45,6 +43,9 @@ defmodule Membrane.Gemini.Mixfile do
       {:membrane_file_plugin, "~> 0.17.0", only: :test},
       {:membrane_raw_audio_parser_plugin, "~> 0.4.0", only: :test},
       {:membrane_generator_plugin, "~> 0.10.1", only: :test},
+      {:bandit, "~> 1.5", only: :test},
+      {:websock_adapter, "~> 0.5", only: :test},
+      {:plug, "~> 1.16", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, ">= 0.0.0", only: :dev, runtime: false}

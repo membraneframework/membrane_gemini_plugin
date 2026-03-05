@@ -29,7 +29,7 @@ defmodule Membrane.Gemini.Endpoint do
 
   defmodule State do
     @type t :: %__MODULE__{
-            status: :standby | :text_sent | :receiving,
+            status: :standby | :text_sent | :receiving | :eos,
             session_config: Membrane.Gemini.Config.t(),
             session_pid: nil | pid(),
             in_audio_eos_received?: boolean(),
@@ -55,7 +55,7 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
-  def handle_setup(_ctx, %{session_config: config} = state) do
+  def handle_setup(_ctx, %State{session_config: config} = state) do
     session_pid = create_session(config)
 
     case Gemini.Live.Session.connect(session_pid) do
@@ -72,8 +72,13 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
-  def handle_buffer(:in_audio, %Membrane.Buffer{payload: payload}, _ctx, state) do
-    case Gemini.Live.Session.send_realtime_input(state.session_pid,
+  def handle_buffer(
+        :in_audio,
+        %Membrane.Buffer{payload: payload},
+        _ctx,
+        %State{session_pid: session_pid} = state
+      ) do
+    case Gemini.Live.Session.send_realtime_input(session_pid,
            audio: Gemini.Live.Audio.create_input_blob(payload)
          ) do
       :ok ->
@@ -86,8 +91,13 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
-  def handle_buffer(:in_text, %Membrane.Buffer{payload: payload}, _ctx, state) do
-    case Gemini.Live.Session.send_realtime_input(state.session_pid, text: payload) do
+  def handle_buffer(
+        :in_text,
+        %Membrane.Buffer{payload: payload},
+        _ctx,
+        %State{session_pid: session_pid} = state
+      ) do
+    case Gemini.Live.Session.send_realtime_input(session_pid, text: payload) do
       :ok ->
         :ok
 
@@ -99,13 +109,18 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
+  def handle_info({:on_message, msg}, _ctx, %State{status: :eos} = state) do
+    Membrane.Logger.info("Message received after element went into EOS status: #{inspect(msg)}")
+    {[], state}
+  end
+
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
            server_content: %Gemini.Types.Live.ServerContent{model_turn: %{parts: parts}}
          }},
         _ctx,
-        state
+        %State{} = state
       )
       when is_list(parts) do
     mime_type = Gemini.Live.Audio.output_mime_type()
@@ -154,14 +169,14 @@ defmodule Membrane.Gemini.Endpoint do
            server_content: %Gemini.Types.Live.ServerContent{generation_complete: true}
          }},
         _ctx,
-        state
+        %State{} = state
       ) do
     Membrane.Logger.debug("Received generation_complete: true")
 
-    state = %{state | status: :standby}
+    {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
     {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: false}}] ++
-       maybe_eos(state), state}
+       maybe_eos_action, state}
   end
 
   def handle_info(
@@ -199,11 +214,11 @@ defmodule Membrane.Gemini.Endpoint do
            }
          }},
         _ctx,
-        state
+        %State{status: status} = state
       ) do
     transcript_action = {:event, {:output, %Membrane.Gemini.OutputTranscriptEvent{text: text}}}
 
-    if state.status == :receiving do
+    if status == :receiving do
       {[transcript_action], state}
     else
       start_response_action = {:event, {:output, %Membrane.Gemini.ResponseStartEvent{}}}
@@ -220,13 +235,13 @@ defmodule Membrane.Gemini.Endpoint do
            }
          }},
         _ctx,
-        state
+        %State{} = state
       ) do
     Membrane.Logger.debug("Interruption detected")
 
-    state = %{state | status: :standby}
+    {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++ maybe_eos(state),
+    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++ maybe_eos_action,
      state}
   end
 
@@ -255,9 +270,9 @@ defmodule Membrane.Gemini.Endpoint do
   def handle_info(
         {:on_go_away, go_away_message},
         _ctx,
-        %{session_pid: session_pid, session_config: config} = state
+        %State{session_pid: session_pid, session_config: config, status: status} = state
       ) do
-    if state.status == :receiving do
+    if status == :receiving do
       Membrane.Logger.warning("Unexpected go_away received while receiving model response")
     end
 
@@ -300,7 +315,7 @@ defmodule Membrane.Gemini.Endpoint do
   def handle_parent_notification(
         :reset_session,
         _ctx,
-        %{
+        %State{
           status: status,
           session_pid: session_pid,
           session_config: config
@@ -310,31 +325,29 @@ defmodule Membrane.Gemini.Endpoint do
 
     state = %{state | status: :standby, session_pid: new_session_pid}
 
-    actions =
-      if status == :receiving,
-        do:
-          [event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++
-            maybe_eos(state),
-        else: []
+    if status == :receiving do
+      {maybe_eos_action, state} = maybe_eos(state)
 
-    {actions, state}
+      {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++
+         maybe_eos_action, state}
+    else
+      {[], state}
+    end
   end
 
   @impl true
-  def handle_end_of_stream(:in_audio, _ctx, state) do
+  def handle_end_of_stream(:in_audio, _ctx, %State{session_pid: session_pid} = state) do
     # Flushes cached audio
-    case Gemini.Live.Session.send_realtime_input(state.session_pid, audio_stream_end: true) do
+    case Gemini.Live.Session.send_realtime_input(session_pid, audio_stream_end: true) do
       :ok -> :ok
       {:error, reason} -> Membrane.Logger.warning("Audio cache flush failed: #{inspect(reason)}")
     end
 
-    state = %{state | in_audio_eos_received?: true}
-    {maybe_eos(state), state}
+    maybe_eos(%{state | in_audio_eos_received?: true})
   end
 
   def handle_end_of_stream(:in_text, _ctx, state) do
-    state = %{state | in_text_eos_received?: true}
-    {maybe_eos(state), state}
+    maybe_eos(%{state | in_text_eos_received?: true})
   end
 
   @spec create_session(config :: Membrane.Gemini.Config.t()) :: pid()
@@ -389,16 +402,19 @@ defmodule Membrane.Gemini.Endpoint do
     new_session_pid
   end
 
-  @spec maybe_eos(state :: map()) :: list()
-  defp maybe_eos(%{
-         status: :standby,
-         in_audio_eos_received?: true,
-         in_text_eos_received?: true,
-         session_pid: pid
-       }) do
+  @spec maybe_eos(state :: State.t()) ::
+          {list(Membrane.Element.Action.end_of_stream()), State.t()}
+  defp maybe_eos(
+         %State{
+           status: :standby,
+           in_audio_eos_received?: true,
+           in_text_eos_received?: true,
+           session_pid: pid
+         } = state
+       ) do
     Gemini.Live.Session.close(pid)
-    [end_of_stream: :output]
+    {[end_of_stream: :output], %{state | status: :eos}}
   end
 
-  defp maybe_eos(_state), do: []
+  defp maybe_eos(state), do: {[], state}
 end
