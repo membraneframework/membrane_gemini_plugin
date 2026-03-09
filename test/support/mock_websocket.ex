@@ -103,7 +103,7 @@ defmodule Membrane.Gemini.MockWebSocket do
       {:gun_ws, ^pid, ^ref, {:close, code, reason}} ->
         {:error, {:closed, code, reason}}
 
-      {:gun_down, ^pid, _protocol, reason, _} ->
+      {:gun_down, ^pid, _protocol, reason, _killed_streams} ->
         {:error, {:connection_down, reason}}
 
       {:gun_error, ^pid, ^ref, reason} ->

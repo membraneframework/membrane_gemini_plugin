@@ -91,7 +91,7 @@ defmodule GeminiMock.Handler do
     {:push, [{:text, Jason.encode!(%{"setupComplete" => %{}})}], %{state | setup_done: true}}
   end
 
-  defp process_message(%{"clientContent" => _}, %{setup_done: true} = state) do
+  defp process_message(%{"clientContent" => _content}, %{setup_done: true} = state) do
     delay(state.response_delay_ms)
     {:push, build_audio_responses(false), state}
   end

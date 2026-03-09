@@ -25,7 +25,7 @@ defmodule GeminiMock.Router do
         conn
         |> WebSockAdapter.upgrade(GeminiMock.Handler, opts, timeout: 120_000)
 
-      _ ->
+      _invalid_key ->
         Logger.warning("GeminiMock: rejected connection with invalid API key")
         send_resp(conn, 403, "Invalid API key")
     end
