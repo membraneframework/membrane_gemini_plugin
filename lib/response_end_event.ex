@@ -1,6 +1,6 @@
 defmodule Membrane.Gemini.ResponseEndEvent do
   @moduledoc """
-  Sent by `Membrane.Gemini.Endpoint` upon model turn completion or interruption.
+  Sent by `Membrane.Gemini.Bin` upon model turn completion or interruption.
   """
 
   @derive Membrane.EventProtocol
