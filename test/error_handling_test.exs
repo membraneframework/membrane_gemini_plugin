@@ -11,7 +11,9 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
     sample_format: :s16le
   }
 
-  @spec pipeline_spec(gemini_config :: Membrane.Gemini.Config.t()) :: [Membrane.ChildrenSpec.builder()]
+  @spec pipeline_spec(gemini_config :: Membrane.Gemini.Config.t()) :: [
+          Membrane.ChildrenSpec.builder()
+        ]
   defp pipeline_spec(gemini_config) do
     [
       child(:audio_source, %Membrane.Testing.Source{
