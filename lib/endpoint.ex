@@ -22,53 +22,50 @@ defmodule Membrane.Gemini.Endpoint do
                   "See option description of `Membrane.Gemini.Bin` or the moduledoc of `Membrane.Gemini.Config`"
               ]
 
-  @output_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
-
-  @spec output_format() :: Membrane.RawAudio.t()
-  def output_format(), do: @output_format
-
   defmodule State do
     @type t :: %__MODULE__{
             status: :standby | :text_sent | :receiving | :eos,
             session_config: Membrane.Gemini.Config.t(),
-            session_pid: nil | pid(),
+            session_pid: pid(),
             in_audio_eos_received?: boolean(),
             in_text_eos_received?: boolean()
           }
 
     @enforce_keys [
-      :session_config
+      :session_config,
+      :session_pid
     ]
 
     defstruct @enforce_keys ++
                 [
                   status: :standby,
-                  session_pid: nil,
                   in_audio_eos_received?: false,
                   in_text_eos_received?: false
                 ]
   end
 
   @impl true
-  def handle_init(_ctx, opts) do
-    {[], %State{session_config: opts.config}}
+  def handle_init(_ctx, %{config: config} = _opts) do
+    session_pid = create_session(config)
+    {[], %State{session_config: config, session_pid: session_pid}}
   end
 
   @impl true
-  def handle_setup(_ctx, %State{session_config: config} = state) do
-    session_pid = create_session(config)
-
+  def handle_setup(_ctx, %State{session_pid: session_pid} = state) do
     case Gemini.Live.Session.connect(session_pid) do
       :ok -> :ok
       {:error, error} -> raise "Failed to start Gemini Live API session, error: #{inspect(error)}"
     end
 
-    {[], %{state | session_pid: session_pid}}
+    {[], state}
   end
 
   @impl true
   def handle_playing(_ctx, state) do
-    {[stream_format: {:output, @output_format}], state}
+    {[
+       stream_format:
+         {:output, %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}}
+     ], state}
   end
 
   @impl true
@@ -357,9 +354,9 @@ defmodule Membrane.Gemini.Endpoint do
 
     # NOTE: A sender for `:on_transcription` is unnecessary since we also receive the transcripts
     # NOTE: as regular `server_content` messages.
-    # NOTE: Same with `:on_session_resumption` - it passes the resume handle as an argument
+    # NOTE: Same with `:on_session_resumption` - it passes the resume handle as an argument,
     # NOTE: but so does :on_go_away, which is also the only place where we explicitly need it.
-    hooks =
+    gemini_callbacks =
       [
         :on_message,
         :on_error,
@@ -368,17 +365,21 @@ defmodule Membrane.Gemini.Endpoint do
         # DEBUG
         :on_close
       ]
-      |> Enum.map(fn hook_id ->
+      |> Enum.map(fn callback_atom ->
         {
-          hook_id,
-          &send(filter_pid, {hook_id, &1})
+          callback_atom,
+          &send(filter_pid, {callback_atom, &1})
         }
       end)
 
-    config_opts = config |> Map.delete(:extra_opts) |> Map.from_struct() |> Keyword.new()
+    config_opts =
+      config
+      |> Map.delete(:extra_opts)
+      |> Map.from_struct()
+      |> Keyword.new()
 
     gemini_opts =
-      config.extra_opts ++ hooks ++ config_opts
+      gemini_callbacks ++ config_opts ++ config.extra_opts
 
     {:ok, session_pid} =
       Gemini.Live.Session.start_link(gemini_opts)
