@@ -1,8 +1,7 @@
 Mix.install([
   {:membrane_core, "~> 1.0"},
-  {:membrane_gemini_plugin, path: Path.join(__DIR__, "..")},
-  {:membrane_portaudio_plugin, ">= 0.0.0"},
-  {:membrane_realtimer_plugin, "~> 0.10.1"}
+  {:membrane_portaudio_plugin, "~> 0.19.4"},
+  {:membrane_gemini_plugin, path: Path.join(__DIR__, "..")}
 ])
 
 Logger.configure(level: :info)
@@ -13,6 +12,7 @@ defmodule Gemini.Demo.TextSource do
   def_output_pad :output,
     accepted_format: %Membrane.RemoteStream{type: :bytestream},
     flow_control: :push
+
 
   @impl true
   def handle_playing(_ctx, state),
@@ -30,7 +30,7 @@ defmodule Gemini.Demo.Mic.LivePipeline do
   def handle_init(_ctx, _opts) do
     spec = [
       # audio source and sink
-      child(:soundboard, %Membrane.PortAudio.Source{
+      child(:audio_source, %Membrane.PortAudio.Source{
         sample_format: :s16le,
         channels: 1,
         sample_rate: 16_000
