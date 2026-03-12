@@ -9,12 +9,12 @@ defmodule Membrane.Gemini.QueueFilter do
   @audio_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
   def_input_pad(:input,
-    accepted_format: @audio_format,
+    accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :push
   )
 
   def_output_pad(:output,
-    accepted_format: @audio_format,
+    accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :manual,
     demand_unit: :buffers
   )
@@ -56,12 +56,7 @@ defmodule Membrane.Gemini.QueueFilter do
     # NOTE: buffer byte-size assumed through empirical tests
     buffer_time = RawAudio.bytes_to_time(1920, @audio_format)
 
-    # pop all events from the front so that either the queue's next element is a buffer or it's empty
-    {events, queue_tail} =
-      Enum.split_while(queue, fn element -> not match?(%Membrane.Buffer{}, element) end)
-
-    # `Enum.split_while` returns the queue tail as a regular list so it has to be converted back
-    new_queue = Qex.new(queue_tail)
+    {new_queue, events} = pop_while_event(queue)
 
     {buffer, new_queue} =
       case Qex.pop(new_queue) do
@@ -141,4 +136,16 @@ defmodule Membrane.Gemini.QueueFilter do
         {[forward: event], state}
     end
   end
+
+  @spec pop_while_event(queue :: Qex.t(), events :: [Membrane.Event.t()]) :: {Qex.t(), [Membrane.Event.t()]}
+  defp pop_while_event(queue, events \\ []) do
+    case Qex.pop(queue) do
+      {{:value, %Membrane.Buffer{}}, _queue} ->
+        {queue, Enum.reverse(events)}
+      {{:value, event}, new_queue} ->
+        {new_queue, [event | events]}
+      {:empty, _queue} ->
+        {queue, Enum.reverse(events)}
+    end
+    end
 end
