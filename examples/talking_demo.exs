@@ -14,12 +14,26 @@ defmodule Gemini.Demo.TextSource do
     flow_control: :push
 
   @impl true
+  def handle_init(_ctx, _opts) do
+    source_pid = self()
+    {:ok, _task_pid} =
+      Task.start_link(fn ->
+        IO.stream(:line)
+        |> Stream.map(&String.trim/1)
+        |> Stream.reject(&(&1 == ""))
+        |> Stream.each(fn line -> send(source_pid, {:text, line}) end)
+        |> Stream.run()
+      end)
+
+    {[], nil}
+  end
+
+  @impl true
   def handle_playing(_ctx, state),
     do: {[stream_format: {:output, %Membrane.RemoteStream{type: :bytestream}}], state}
 
-  @impl true
-  def handle_parent_notification({:text, line}, %{playback: :playing} = _ctx, state),
-    do: {[buffer: {:output, %Membrane.Buffer{payload: line}}], state}
+  def handle_info({:text, line}, _ctx, state), do:
+    {[buffer: {:output, %Membrane.Buffer{payload: line}}], state}
 end
 
 defmodule Gemini.Demo.Mic.LivePipeline do
@@ -47,18 +61,9 @@ defmodule Gemini.Demo.Mic.LivePipeline do
     {[spec: spec], nil}
   end
 
-  @impl true
-  def handle_info({:sound_path, _path} = msg, _ctx, state),
-    do: {[notify_child: {:soundboard, msg}], state}
-
   def handle_info({:text, _line} = msg, _ctx, state),
     do: {[notify_child: {:text_source, msg}], state}
 end
 
-{:ok, _supervisor, pipeline} = Membrane.Pipeline.start_link(Gemini.Demo.Mic.LivePipeline, [])
-
-IO.stream(:line)
-|> Stream.map(&String.trim/1)
-|> Stream.reject(&(&1 == ""))
-|> Stream.each(fn line -> send(pipeline, {:text, line}) end)
-|> Stream.run()
+Membrane.Pipeline.start_link(Gemini.Demo.Mic.LivePipeline, [])
+Process.sleep(:infinity)
