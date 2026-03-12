@@ -13,14 +13,22 @@ defmodule Membrane.Gemini.Bin do
   def_options mode: [
                 spec: :continuous | :discrete,
                 description:
-                  "Whether the element should output audio as a continuous stream, intertwining the response audio with silence, or just the response audio buffers.
-                  The first option is ideal for straightforward LLM integrations that don't require additional audio processing. The second is better if one wants more fine-grained control without needing VAD mechanisms.",
+                  """
+                  Whether the element should output audio as a continuous stream,
+                  intertwining the response audio with silence, or just the response audio buffers.
+                  The first option is ideal for straightforward LLM integrations
+                  that don't require additional audio processing.
+                  The second is better if one wants more fine-grained control without needing VAD mechanisms.
+                  """,
                 default: :continuous
               ],
               config: [
                 spec: Membrane.Gemini.Config.t(),
                 description:
-                  "Used to configure the `gemini_ex` GenServer managing the Live API session. For more details, see `Membrane.Gemini.Config`.",
+                  """
+                  Used to configure the `gemini_ex` GenServer managing the Live API session.
+                  For more details, see `Membrane.Gemini.Config`.
+                  """,
                 default: %Membrane.Gemini.Config{}
               ]
 
