@@ -172,7 +172,7 @@ defmodule Membrane.Gemini.Endpoint do
 
     {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: false}}] ++
+    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: false}}] ++
        maybe_eos_action, state}
   end
 
@@ -238,7 +238,7 @@ defmodule Membrane.Gemini.Endpoint do
 
     {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++ maybe_eos_action,
+    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: true}}] ++ maybe_eos_action,
      state}
   end
 
@@ -325,7 +325,7 @@ defmodule Membrane.Gemini.Endpoint do
     if status == :receiving do
       {maybe_eos_action, state} = maybe_eos(state)
 
-      {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted: true}}] ++
+      {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: true}}] ++
          maybe_eos_action, state}
     else
       {[], state}

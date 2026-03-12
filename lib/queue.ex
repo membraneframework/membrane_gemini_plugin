@@ -101,8 +101,8 @@ defmodule Membrane.Gemini.QueueFilter do
         %{queue: queue} = state
       ) do
     case Qex.pop_back(queue) do
-      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted: false} = end_event}, _queue} ->
-        {[forward: %{end_event | interrupted: true}, forward: start_event],
+      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted?: false} = end_event}, _queue} ->
+        {[forward: %{end_event | interrupted?: true}, forward: start_event],
          %{state | queue: Qex.new()}}
 
       {:empty, _queue} ->
@@ -112,7 +112,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   def handle_event(
         :input,
-        %Membrane.Gemini.ResponseEndEvent{interrupted: false} = event,
+        %Membrane.Gemini.ResponseEndEvent{interrupted?: false} = event,
         _ctx,
         %{queue: queue} = state
       ) do
@@ -123,7 +123,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   def handle_event(
         :input,
-        %Membrane.Gemini.ResponseEndEvent{interrupted: true} = event,
+        %Membrane.Gemini.ResponseEndEvent{interrupted?: true} = event,
         _ctx,
         state
       ) do

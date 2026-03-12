@@ -5,7 +5,11 @@ defmodule Membrane.Gemini.ResponseEndEvent do
 
   @derive Membrane.EventProtocol
 
-  @enforce_keys [:interrupted]
+  @type t :: %__MODULE__{
+    interrupted?: boolean() #  Whether or not the turn was interrupted by the user
+  }
+
+  @enforce_keys [:interrupted?]
 
   defstruct @enforce_keys
 end
