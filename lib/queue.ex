@@ -8,14 +8,16 @@ defmodule Membrane.Gemini.QueueFilter do
 
   @audio_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
-  def_input_pad :input,
+  def_input_pad(:input,
     accepted_format: @audio_format,
     flow_control: :push
+  )
 
-  def_output_pad :output,
+  def_output_pad(:output,
     accepted_format: @audio_format,
     flow_control: :manual,
     demand_unit: :buffers
+  )
 
   @impl true
   def handle_init(_ctx, _opts) do
@@ -82,27 +84,15 @@ defmodule Membrane.Gemini.QueueFilter do
   end
 
   @impl true
-  def handle_event(
-        :input,
-        %Membrane.Gemini.OutputTranscriptEvent{} = event,
-        _ctx,
-        %{queue: queue} = state
-      ) do
-    {[], %{state | queue: Qex.push(queue, event)}}
-  end
+  def handle_event(:input, %Membrane.Gemini.OutputTranscriptEvent{} = event, _ctx, state),
+    do: do_handle_event(event, state)
 
   def handle_event(:input, %Membrane.Gemini.InputTranscriptEvent{} = event, _ctx, state) do
     {[forward: event], state}
   end
 
-  def handle_event(
-        :input,
-        %Membrane.Gemini.ThinkingEvent{} = event,
-        _ctx,
-        %{queue: queue} = state
-      ) do
-    {[], %{state | queue: Qex.push(queue, event)}}
-  end
+  def handle_event(:input, %Membrane.Gemini.ThinkingEvent{} = event, _ctx, state),
+    do: do_handle_event(event, state)
 
   def handle_event(
         :input,
@@ -111,9 +101,12 @@ defmodule Membrane.Gemini.QueueFilter do
         %{queue: queue} = state
       ) do
     case Qex.pop_back(queue) do
-      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted: false} = end_event}, _queue}
-          -> {[forward: %{end_event | interrupted: true}, forward: start_event], %{ state | queue: Qex.new() }}
-      {:empty, _queue} -> {[forward: start_event], state}
+      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted: false} = end_event}, _queue} ->
+        {[forward: %{end_event | interrupted: true}, forward: start_event],
+         %{state | queue: Qex.new()}}
+
+      {:empty, _queue} ->
+        {[forward: start_event], state}
     end
   end
 
@@ -135,5 +128,17 @@ defmodule Membrane.Gemini.QueueFilter do
         state
       ) do
     {[forward: event], %{state | queue: Qex.new()}}
+  end
+
+  @spec do_handle_event(event :: Membrane.Event.t(), state :: map()) ::
+          {[Membrane.Element.Action.forward()], map()}
+  defp do_handle_event(event, %{queue: queue} = state) do
+    case Qex.pop(queue) do
+      {{:value, _value}, _queue} ->
+        {[], %{state | queue: Qex.push(queue, event)}}
+
+      {:empty, _queue} ->
+        {[forward: event], state}
+    end
   end
 end
