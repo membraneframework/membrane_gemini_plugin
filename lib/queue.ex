@@ -110,14 +110,10 @@ defmodule Membrane.Gemini.QueueFilter do
         _ctx,
         %{queue: queue} = state
       ) do
-    if Enum.empty?(queue) do
-      {[forward: start_event], state}
-    else
-      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted: false} = end_event}, _queue} =
-        Qex.pop_back(queue)
-
-      {[forward: %{end_event | interrupted: true}, forward: start_event],
-       %{state | queue: Qex.new()}}
+    case Qex.pop_back(queue) do
+      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted: false} = end_event}, _queue}
+          -> {[forward: %{end_event | interrupted: true}, forward: start_event], %{ state | queue: Qex.new() }}
+      {:empty, _queue} -> {[forward: start_event], state}
     end
   end
 
