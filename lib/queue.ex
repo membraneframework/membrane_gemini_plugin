@@ -1,4 +1,4 @@
-defmodule Membrane.Gemini.Queue do
+defmodule Membrane.Gemini.QueueFilter do
   @moduledoc false
 
   use Membrane.Filter

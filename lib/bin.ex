@@ -64,7 +64,7 @@ defmodule Membrane.Gemini.Bin do
 
   defp maybe_realtime_processing(child_spec, :continuous), do:
           child_spec
-          |> child(:queue, Membrane.Gemini.Queue)
+          |> child(:queue, Membrane.Gemini.QueueFilter)
           # Options used to enforce synchronous demands from the realtimer to Gemini
           |> via_in(:input, target_queue_size: 1, min_demand_factor: 1)
           |> child(:realtimer, Membrane.Realtimer)
