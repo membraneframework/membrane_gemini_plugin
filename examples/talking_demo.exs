@@ -48,13 +48,13 @@ defmodule Gemini.Demo.Mic.LivePipeline do
         channels: 1,
         sample_rate: 16_000
       })
-      |> via_in(:in_audio)
+      |> via_in(:audio_input)
       |> child(:gemini, Membrane.Gemini.Bin)
       |> child(:gemini_speaker, Membrane.PortAudio.Sink),
 
       # text input for prompting
       child(:text_source, Gemini.Demo.TextSource)
-      |> via_in(:in_text)
+      |> via_in(:text_input)
       |> get_child(:gemini)
     ]
 

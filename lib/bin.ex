@@ -32,10 +32,10 @@ defmodule Membrane.Gemini.Bin do
                 default: %Membrane.Gemini.Config{}
               ]
 
-  def_input_pad :in_audio,
+  def_input_pad :audio_input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 16_000}
 
-  def_input_pad :in_text,
+  def_input_pad :text_input,
     accepted_format: %Membrane.RemoteStream{type: :bytestream}
 
   def_output_pad :output,
@@ -45,13 +45,13 @@ defmodule Membrane.Gemini.Bin do
   def handle_init(_ctx, %{mode: mode, config: config} = _opts) do
 
     spec = [
-      bin_input(:in_audio)
-      |> via_in(:in_audio)
+      bin_input(:audio_input)
+      |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Endpoint{config: config})
       |> maybe_realtime_processing(mode)
       |> bin_output(:output),
-      bin_input(:in_text)
-      |> via_in(:in_text)
+      bin_input(:text_input)
+      |> via_in(:text_input)
       |> get_child(:gemini)
     ]
 

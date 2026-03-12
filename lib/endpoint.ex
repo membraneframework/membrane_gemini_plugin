@@ -6,10 +6,10 @@ defmodule Membrane.Gemini.Endpoint do
 
   alias Membrane.RawAudio
 
-  def_input_pad :in_audio,
+  def_input_pad :audio_input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 16_000}
 
-  def_input_pad :in_text,
+  def_input_pad :text_input,
     accepted_format: %Membrane.RemoteStream{type: :bytestream}
 
   def_output_pad :output,
@@ -70,7 +70,7 @@ defmodule Membrane.Gemini.Endpoint do
 
   @impl true
   def handle_buffer(
-        :in_audio,
+        :audio_input,
         %Membrane.Buffer{payload: payload},
         _ctx,
         %State{session_pid: session_pid} = state
@@ -89,7 +89,7 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   def handle_buffer(
-        :in_text,
+        :text_input,
         %Membrane.Buffer{payload: payload},
         _ctx,
         %State{session_pid: session_pid} = state
@@ -333,7 +333,7 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
-  def handle_end_of_stream(:in_audio, _ctx, %State{session_pid: session_pid} = state) do
+  def handle_end_of_stream(:audio_input, _ctx, %State{session_pid: session_pid} = state) do
     # Flushes cached audio
     case Gemini.Live.Session.send_realtime_input(session_pid, audio_stream_end: true) do
       :ok -> :ok
@@ -343,7 +343,7 @@ defmodule Membrane.Gemini.Endpoint do
     maybe_eos(%{state | in_audio_eos_received?: true})
   end
 
-  def handle_end_of_stream(:in_text, _ctx, state) do
+  def handle_end_of_stream(:text_input, _ctx, state) do
     maybe_eos(%{state | in_text_eos_received?: true})
   end
 

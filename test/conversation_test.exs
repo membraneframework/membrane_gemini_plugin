@@ -16,13 +16,13 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
         stream_format: @input_audio_format,
         output: []
       })
-      |> via_in(:in_audio)
+      |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete, config: gemini_config})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{
         output: ["Hello, world!"]
       })
-      |> via_in(:in_text)
+      |> via_in(:text_input)
       |> get_child(:gemini)
     ]
 
@@ -72,11 +72,11 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
         overwrite_pts?: true
       })
       |> child(:realtimer, Membrane.Realtimer)
-      |> via_in(:in_audio)
+      |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: []})
-      |> via_in(:in_text)
+      |> via_in(:text_input)
       |> get_child(:gemini)
     ]
 

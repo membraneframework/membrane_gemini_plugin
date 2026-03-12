@@ -20,14 +20,14 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
         stream_format: @input_audio_format,
         output: []
       })
-      |> via_in(:in_audio)
+      |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{
         mode: :discrete,
         config: gemini_config
       })
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: ["Hello"]})
-      |> via_in(:in_text)
+      |> via_in(:text_input)
       |> get_child(:gemini)
     ]
   end
