@@ -13,7 +13,6 @@ defmodule Gemini.Demo.TextSource do
     accepted_format: %Membrane.RemoteStream{type: :bytestream},
     flow_control: :push
 
-
   @impl true
   def handle_playing(_ctx, state),
     do: {[stream_format: {:output, %Membrane.RemoteStream{type: :bytestream}}], state}
