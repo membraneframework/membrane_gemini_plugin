@@ -43,24 +43,12 @@ defmodule Membrane.Gemini.Bin do
 
   @impl true
   def handle_init(_ctx, %{mode: mode, config: config} = _opts) do
-    maybe_continuous_processing =
-      if mode == :continuous do
-        fn child_spec ->
-          child_spec
-          |> child(:queue, Membrane.Gemini.Queue)
-          # Options used to enforce synchronous demands from the realtimer to Gemini
-          |> via_in(:input, target_queue_size: 1, min_demand_factor: 1)
-          |> child(:realtimer, Membrane.Realtimer)
-        end
-      else
-        &Function.identity/1
-      end
 
     spec = [
       bin_input(:in_audio)
       |> via_in(:in_audio)
       |> child(:gemini, %Membrane.Gemini.Endpoint{config: config})
-      |> maybe_continuous_processing.()
+      |> maybe_realtime_processing(mode)
       |> bin_output(:output),
       bin_input(:in_text)
       |> via_in(:in_text)
@@ -73,4 +61,12 @@ defmodule Membrane.Gemini.Bin do
   @impl true
   def handle_parent_notification(:reset_session, _ctx, state),
     do: {[notify_child: {:gemini, :reset_session}], state}
+
+  defp maybe_realtime_processing(child_spec, :continuous), do:
+          child_spec
+          |> child(:queue, Membrane.Gemini.Queue)
+          # Options used to enforce synchronous demands from the realtimer to Gemini
+          |> via_in(:input, target_queue_size: 1, min_demand_factor: 1)
+          |> child(:realtimer, Membrane.Realtimer)
+  defp maybe_realtime_processing(child_spec, :discrete), do: child_spec
 end
