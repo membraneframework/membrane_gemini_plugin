@@ -1,4 +1,4 @@
-defmodule Membrane.Gemini.ResponseStartEvent do
+defmodule Membrane.Gemini.Events.ResponseStart do
   @moduledoc """
   Sent by `Membrane.Gemini.Bin` when it starts receiving a new response.
   """

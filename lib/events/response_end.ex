@@ -1,4 +1,4 @@
-defmodule Membrane.Gemini.ResponseEndEvent do
+defmodule Membrane.Gemini.Events.ResponseEnd do
   @moduledoc """
   Sent by `Membrane.Gemini.Bin` upon model turn completion or interruption.
   """
@@ -6,8 +6,9 @@ defmodule Membrane.Gemini.ResponseEndEvent do
   @derive Membrane.EventProtocol
 
   @type t :: %__MODULE__{
-    interrupted?: boolean() #  Whether or not the turn was interrupted by the user
-  }
+          #  Whether or not the turn was interrupted by the user
+          interrupted?: boolean()
+        }
 
   @enforce_keys [:interrupted?]
 

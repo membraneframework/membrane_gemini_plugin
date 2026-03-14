@@ -6,21 +6,26 @@ defmodule Membrane.Gemini.Endpoint do
 
   alias Membrane.RawAudio
 
-  def_input_pad :audio_input,
+  def_input_pad(:audio_input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 16_000}
+  )
 
-  def_input_pad :text_input,
+  def_input_pad(:text_input,
     accepted_format: %Membrane.RemoteStream{type: :bytestream}
+  )
 
-  def_output_pad :output,
+  def_output_pad(:output,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :push
+  )
 
-  def_options config: [
-                spec: Membrane.Gemini.Config.t(),
-                description:
-                  "See option description of `Membrane.Gemini.Bin` or the moduledoc of `Membrane.Gemini.Config`"
-              ]
+  def_options(
+    config: [
+      spec: Membrane.Gemini.Config.t(),
+      description:
+        "See option description of `Membrane.Gemini.Bin` or the moduledoc of `Membrane.Gemini.Config`"
+    ]
+  )
 
   defmodule State do
     @type t :: %__MODULE__{
@@ -132,7 +137,7 @@ defmodule Membrane.Gemini.Endpoint do
           {:buffer, {:output, %Membrane.Buffer{payload: Base.decode64!(data)}}}
 
         %{text: text} ->
-          {:event, {:output, %Membrane.Gemini.ThinkingEvent{text: text}}}
+          {:event, {:output, %Membrane.Gemini.Events.Thinking{text: text}}}
 
         other ->
           Membrane.Logger.warning("Unrecognised response part received: #{inspect(other)}")
@@ -143,7 +148,7 @@ defmodule Membrane.Gemini.Endpoint do
     if state.status == :receiving do
       {actions, state}
     else
-      actions = [{:event, {:output, %Membrane.Gemini.ResponseStartEvent{}}} | actions]
+      actions = [{:event, {:output, %Membrane.Gemini.Events.ResponseStart{}}} | actions]
       {actions, %{state | status: :receiving}}
     end
   end
@@ -172,7 +177,7 @@ defmodule Membrane.Gemini.Endpoint do
 
     {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: false}}] ++
+    {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: false}}] ++
        maybe_eos_action, state}
   end
 
@@ -200,7 +205,7 @@ defmodule Membrane.Gemini.Endpoint do
         _ctx,
         state
       ) do
-    {[event: {:output, %Membrane.Gemini.InputTranscriptEvent{text: text}}], state}
+    {[event: {:output, %Membrane.Gemini.Events.Transcript{text: text, direction: :input}}], state}
   end
 
   def handle_info(
@@ -213,12 +218,13 @@ defmodule Membrane.Gemini.Endpoint do
         _ctx,
         %State{status: status} = state
       ) do
-    transcript_action = {:event, {:output, %Membrane.Gemini.OutputTranscriptEvent{text: text}}}
+    transcript_action =
+      {:event, {:output, %Membrane.Gemini.Events.Transcript{text: text, direction: :output}}}
 
     if status == :receiving do
       {[transcript_action], state}
     else
-      start_response_action = {:event, {:output, %Membrane.Gemini.ResponseStartEvent{}}}
+      start_response_action = {:event, {:output, %Membrane.Gemini.Events.ResponseStart{}}}
 
       {[start_response_action, transcript_action], %{state | status: :receiving}}
     end
@@ -238,8 +244,8 @@ defmodule Membrane.Gemini.Endpoint do
 
     {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: true}}] ++ maybe_eos_action,
-     state}
+    {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}}] ++
+       maybe_eos_action, state}
   end
 
   def handle_info(
@@ -325,7 +331,7 @@ defmodule Membrane.Gemini.Endpoint do
     if status == :receiving do
       {maybe_eos_action, state} = maybe_eos(state)
 
-      {[event: {:output, %Membrane.Gemini.ResponseEndEvent{interrupted?: true}}] ++
+      {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}}] ++
          maybe_eos_action, state}
     else
       {[], state}

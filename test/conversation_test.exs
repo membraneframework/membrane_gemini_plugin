@@ -29,11 +29,11 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
     {:ok, _supervisor_pid, pipeline_pid} = Membrane.Testing.Pipeline.start(spec: spec)
 
     timeout_ms = 5_000
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ResponseStartEvent{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ThinkingEvent{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.OutputTranscriptEvent{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.ResponseStart{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.Thinking{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.Transcript{direction: :output}, timeout_ms)
     assert_sink_buffer(pipeline_pid, :sink, %Membrane.Buffer{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ResponseEndEvent{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.ResponseEnd{}, timeout_ms)
     assert_end_of_stream(pipeline_pid, :sink, :input, timeout_ms)
   end
 
@@ -83,12 +83,12 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
     {:ok, _supervisor_pid, pipeline_pid} = Membrane.Testing.Pipeline.start(spec: spec)
 
     timeout_ms = 15_000
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.InputTranscriptEvent{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ResponseStartEvent{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ThinkingEvent{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.OutputTranscriptEvent{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.Transcript{direction: :input}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.ResponseStart{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.Thinking{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.Transcript{direction: :output}, timeout_ms)
     assert_sink_buffer(pipeline_pid, :sink, %Membrane.Buffer{}, timeout_ms)
-    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.ResponseEndEvent{}, timeout_ms)
+    assert_sink_event(pipeline_pid, :sink, %Membrane.Gemini.Events.ResponseEnd{}, timeout_ms)
     assert_end_of_stream(pipeline_pid, :sink, :input, timeout_ms)
   end
 end

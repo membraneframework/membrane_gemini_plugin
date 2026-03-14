@@ -79,24 +79,24 @@ defmodule Membrane.Gemini.QueueFilter do
   end
 
   @impl true
-  def handle_event(:input, %Membrane.Gemini.OutputTranscriptEvent{} = event, _ctx, state),
+  def handle_event(:input, %Membrane.Gemini.Events.Transcript{direction: :output} = event, _ctx, state),
     do: do_handle_event(event, state)
 
-  def handle_event(:input, %Membrane.Gemini.InputTranscriptEvent{} = event, _ctx, state) do
+  def handle_event(:input, %Membrane.Gemini.Events.Transcript{direction: :input} = event, _ctx, state) do
     {[forward: event], state}
   end
 
-  def handle_event(:input, %Membrane.Gemini.ThinkingEvent{} = event, _ctx, state),
+  def handle_event(:input, %Membrane.Gemini.Events.Thinking{} = event, _ctx, state),
     do: do_handle_event(event, state)
 
   def handle_event(
         :input,
-        %Membrane.Gemini.ResponseStartEvent{} = start_event,
+        %Membrane.Gemini.Events.ResponseStart{} = start_event,
         _ctx,
         %{queue: queue} = state
       ) do
     case Qex.pop_back(queue) do
-      {{:value, %Membrane.Gemini.ResponseEndEvent{interrupted?: false} = end_event}, _queue} ->
+      {{:value, %Membrane.Gemini.Events.ResponseEnd{interrupted?: false} = end_event}, _queue} ->
         {[forward: %{end_event | interrupted?: true}, forward: start_event],
          %{state | queue: Qex.new()}}
 
@@ -107,7 +107,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   def handle_event(
         :input,
-        %Membrane.Gemini.ResponseEndEvent{interrupted?: false} = event,
+        %Membrane.Gemini.Events.ResponseEnd{interrupted?: false} = event,
         _ctx,
         %{queue: queue} = state
       ) do
@@ -118,7 +118,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   def handle_event(
         :input,
-        %Membrane.Gemini.ResponseEndEvent{interrupted?: true} = event,
+        %Membrane.Gemini.Events.ResponseEnd{interrupted?: true} = event,
         _ctx,
         state
       ) do
