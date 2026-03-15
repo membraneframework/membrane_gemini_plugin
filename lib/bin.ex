@@ -2,8 +2,40 @@ defmodule Membrane.Gemini.Bin do
   @moduledoc """
   A Membrane Bin for integrating with Google's Gemini Live API.
 
-  This bin provides a wrapper around the Gemini endpoint, accepting both audio and text
-  inputs and producing audio output from the LLM.
+  ## Pads
+
+  - `:audio_input` — mono 16-bit PCM at 16 kHz. Buffers are forwarded to the model
+    as realtime audio input. Sending end-of-stream flushes any cached audio on the
+    server side.
+  - `:text_input` — an arbitrary bytestream. Each buffer's payload is sent verbatim
+    as a realtime text input chunk.
+  - `:output` — mono 16-bit PCM at 24 kHz, carrying the model's audio responses.
+    In addition to audio buffers, the following Membrane events are emitted on this pad:
+    - `Membrane.Gemini.Events.ResponseStart` — signals the beginning of a new model turn.
+    - `Membrane.Gemini.Events.ResponseEnd` — signals turn completion or barge-in
+      interruption (`interrupted?: true`).
+    - `Membrane.Gemini.Events.Thinking` — carries intermediate thinking text when the
+      model's thinking mode is enabled.
+    - `Membrane.Gemini.Events.Transcript` — carries transcription segments for both
+      input audio (`direction: :input`) and the model's audio output (`direction: :output`).
+
+  ## Session lifecycle
+
+  A `Gemini.Live.Session` is started during element initialisation and connected when
+  the bin enters the `:playing` state. The session runs for the lifetime of the element.
+
+  If the server sends a `go_away` message, the session is transparently restarted. When
+  a resume handle is available the new session picks up the previous conversation context;
+  otherwise the session starts fresh.
+
+  A `:reset_session` parent notification can also be sent at any time to force an
+  immediate session restart (without a resume handle).
+
+  ## End of stream
+
+  EOS is propagated to the `:output` pad once both input pads have received EOS and
+  the model is not currently generating a response. If a response is in progress when
+  EOS arrives on both inputs, propagation is deferred until the current turn finishes.
   """
 
   use Membrane.Bin
