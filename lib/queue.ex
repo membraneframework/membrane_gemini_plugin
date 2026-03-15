@@ -54,18 +54,19 @@ defmodule Membrane.Gemini.QueueFilter do
           state
       ) do
     # NOTE: buffer byte-size assumed through empirical tests
-    buffer_time = RawAudio.bytes_to_time(1920, @audio_format)
+    buffer_duration = RawAudio.bytes_to_time(1920, @audio_format)
 
     {new_queue, events} = pop_while_event(queue)
 
     {buffer, new_queue} =
       case Qex.pop(new_queue) do
         {{:value, %Membrane.Buffer{} = buffer}, new_queue} ->
-          {buffer, new_queue}
+          {%{buffer | pts: pts_counter}, new_queue}
 
         {:empty, _queue} ->
           silence_buffer = %Membrane.Buffer{
-            payload: RawAudio.silence(@audio_format, buffer_time)
+            payload: RawAudio.silence(@audio_format, buffer_duration),
+            pts: pts_counter
           }
 
           {silence_buffer, new_queue}
@@ -73,16 +74,25 @@ defmodule Membrane.Gemini.QueueFilter do
 
     actions =
       Enum.map(events, fn event -> {:event, {:output, event}} end) ++
-        [buffer: {:output, %{buffer | pts: pts_counter}}]
+        [buffer: {:output, buffer}]
 
-    {actions, %{state | queue: new_queue, pts_counter: pts_counter + buffer_time}}
+    {actions, %{state | queue: new_queue, pts_counter: pts_counter + buffer_duration}}
   end
 
   @impl true
-  def handle_event(:input, %Membrane.Gemini.Events.Transcript{direction: :output} = event, _ctx, state),
-    do: do_handle_event(event, state)
+  def handle_event(
+        :input,
+        %Membrane.Gemini.Events.Transcript{direction: :output} = event,
+        _ctx,
+        state
+      ), do: do_handle_event(event, state)
 
-  def handle_event(:input, %Membrane.Gemini.Events.Transcript{direction: :input} = event, _ctx, state) do
+  def handle_event(
+        :input,
+        %Membrane.Gemini.Events.Transcript{direction: :input} = event,
+        _ctx,
+        state
+      ) do
     {[forward: event], state}
   end
 
@@ -137,15 +147,18 @@ defmodule Membrane.Gemini.QueueFilter do
     end
   end
 
-  @spec pop_while_event(queue :: Qex.t(), events :: [Membrane.Event.t()]) :: {Qex.t(), [Membrane.Event.t()]}
+  @spec pop_while_event(queue :: Qex.t(), events :: [Membrane.Event.t()]) ::
+          {Qex.t(), [Membrane.Event.t()]}
   defp pop_while_event(queue, events \\ []) do
     case Qex.pop(queue) do
       {{:value, %Membrane.Buffer{}}, _queue} ->
         {queue, Enum.reverse(events)}
+
       {{:value, event}, new_queue} ->
         {new_queue, [event | events]}
+
       {:empty, _queue} ->
         {queue, Enum.reverse(events)}
     end
-    end
+  end
 end
