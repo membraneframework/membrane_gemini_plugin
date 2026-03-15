@@ -354,7 +354,7 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @spec create_session(config :: Membrane.Gemini.Config.t()) :: pid()
-  def create_session(%Membrane.Gemini.Config{} = config) do
+  defp create_session(%Membrane.Gemini.Config{} = config) do
     Membrane.Logger.debug("Creating new session with config: #{inspect(config)}")
     filter_pid = self()
 
