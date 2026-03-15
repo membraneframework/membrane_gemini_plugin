@@ -171,7 +171,7 @@ defmodule Membrane.Gemini.Endpoint do
            server_content: %Gemini.Types.Live.ServerContent{generation_complete: true}
          }},
         _ctx,
-        %State{} = state
+        %State{status: :receiving} = state
       ) do
     Membrane.Logger.debug("Received generation_complete: true")
 
