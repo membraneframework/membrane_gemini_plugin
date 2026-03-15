@@ -367,9 +367,6 @@ defmodule Membrane.Gemini.Endpoint do
         :on_message,
         :on_error,
         :on_go_away,
-
-        # DEBUG
-        :on_close
       ]
       |> Enum.map(fn callback_atom ->
         {
