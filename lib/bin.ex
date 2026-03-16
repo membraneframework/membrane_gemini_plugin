@@ -44,15 +44,17 @@ defmodule Membrane.Gemini.Bin do
 
   def_options(
     mode: [
-      spec: :continuous | :discrete,
+      spec: :paced | :raw,
       description: """
-      Whether the element should output audio as a continuous stream,
-      intertwining the response audio with silence, or just the response audio buffers.
-      The first option is ideal for straightforward LLM integrations
+      Whether the element should output audio as a continuous, real-time stream,
+      intertwining the response audio with silence (`:paced`),
+      or just the response audio buffers (`:raw`).
+      `:paced` mode is ideal for straightforward LLM integrations
       that don't require additional audio processing.
-      The second is better if one wants more fine-grained control without needing VAD mechanisms.
+      `:raw` mode is better if one wants more fine-grained control
+      over the incoming audio stream.
       """,
-      default: :continuous
+      default: :paced
     ],
     model: [
       spec: String.t(),
@@ -172,7 +174,7 @@ defmodule Membrane.Gemini.Bin do
   def handle_parent_notification(:reset_session, _ctx, state),
     do: {[notify_child: {:gemini, :reset_session}], state}
 
-  defp maybe_realtime_processing(child_spec, :continuous),
+  defp maybe_realtime_processing(child_spec, :paced),
     do:
       child_spec
       |> child(:queue, Membrane.Gemini.QueueFilter)
@@ -180,5 +182,5 @@ defmodule Membrane.Gemini.Bin do
       |> via_in(:input, target_queue_size: 1, min_demand_factor: 1)
       |> child(:realtimer, Membrane.Realtimer)
 
-  defp maybe_realtime_processing(child_spec, :discrete), do: child_spec
+  defp maybe_realtime_processing(child_spec, :raw), do: child_spec
 end
