@@ -20,7 +20,7 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
       })
       |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{
-        mode: :discrete,
+        mode: :paced,
         extra_opts: extra_opts
       })
       |> child(:sink, Membrane.Testing.Sink),

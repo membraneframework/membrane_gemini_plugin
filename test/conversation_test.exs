@@ -17,7 +17,7 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
         output: []
       })
       |> via_in(:audio_input)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete, extra_opts: extra_opts})
+      |> child(:gemini, %Membrane.Gemini.Bin{mode: :raw, extra_opts: extra_opts})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{
         output: ["Hello, world!"]
@@ -80,7 +80,7 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
       })
       |> child(:realtimer, Membrane.Realtimer)
       |> via_in(:audio_input)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete})
+      |> child(:gemini, %Membrane.Gemini.Bin{mode: :raw})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: []})
       |> via_in(:text_input)
