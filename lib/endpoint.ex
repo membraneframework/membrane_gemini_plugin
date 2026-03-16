@@ -34,6 +34,28 @@ defmodule Membrane.Gemini.Endpoint do
     ]
   )
 
+  # Status transitions:
+  #
+  #                  ◄──────── [interrupted / go_away / reset_session] ──────────┐
+  #                  │                                                           │
+  #                  │                  [text buffer received]                   │
+  #   initial ──► :standby ────────────────────────────────────────────► :text_sent
+  #                  ▲  │                                                        │
+  #                  │  │ [model content /                                       │ [model content /
+  #                  │  │  output transcription received]                        │  output transcription received]
+  #                  │  └───────────────────────────────────────────────────────►│
+  #                  │                                                           ▼
+  #                  │ [generation_complete /                             :receiving
+  #                  │  interrupted /                                            │
+  #                  │  go_away /                                                │
+  #                  │  reset_session]                                           │
+  #                  └───────────────────────────────────────────────────────────┘
+  #                 ...
+  #                  │
+  #                  │ [audio EOS received & text EOS received & finished receiving response, if any]
+  #                  ▼
+  #                :eos  (terminal — further messages are dropped)
+
   defmodule State do
     @type t :: %__MODULE__{
             status: :standby | :text_sent | :receiving | :eos,
