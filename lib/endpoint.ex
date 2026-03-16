@@ -20,18 +20,9 @@ defmodule Membrane.Gemini.Endpoint do
   )
 
   def_options(
-    model: [
-      spec: String.t(),
-      default: "gemini-2.5-flash-native-audio-latest"
-    ],
-    system_instruction: [
-      spec: nil | String.t(),
-      default: nil
-    ],
-    extra_opts: [
-      spec: Keyword.t(),
-      default: []
-    ]
+    model: [spec: String.t()],
+    system_instruction: [spec: nil | String.t()],
+    extra_opts: [spec: Keyword.t()]
   )
 
   # Status transitions:
@@ -59,11 +50,7 @@ defmodule Membrane.Gemini.Endpoint do
   defmodule State do
     @type t :: %__MODULE__{
             status: :standby | :text_sent | :receiving | :eos,
-            gemini_opts: %{
-              model: String.t(),
-              system_instruction: nil | String.t(),
-              extra_opts: Keyword.t()
-            },
+            gemini_opts: map(),
             session_pid: pid(),
             audio_eos_received?: boolean(),
             text_eos_received?: boolean()
@@ -408,7 +395,7 @@ defmodule Membrane.Gemini.Endpoint do
     maybe_eos(%{state | text_eos_received?: true})
   end
 
-  @spec create_session(gemini_opts :: Keyword.t(), resume_handle :: nil | String.t()) :: pid()
+  @spec create_session(gemini_opts :: %__MODULE__{}, resume_handle :: nil | String.t()) :: pid()
   defp create_session(gemini_opts, resume_handle \\ nil) do
     Membrane.Logger.debug("Creating new session with config: #{inspect(gemini_opts)}")
     filter_pid = self()
@@ -454,7 +441,7 @@ defmodule Membrane.Gemini.Endpoint do
 
   @spec restart_session(
           session_pid :: pid(),
-          gemini_opts :: map(),
+          gemini_opts :: %__MODULE__{},
           resume_handle :: nil | String.t()
         ) :: pid()
   defp restart_session(session_pid, gemini_opts, resume_handle \\ nil) do
