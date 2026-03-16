@@ -308,6 +308,11 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  def handle_info({:on_error, msg}, _ctx, state) do
+    Membrane.Logger.error("Unhandled error received by session: #{inspect(msg)}")
+    {[], state}
+  end
+
   @impl true
   def handle_info(
         {:on_go_away, go_away_message},
@@ -355,11 +360,15 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
+  def handle_parent_notification(:reset_session, _ctx, %State{status: :eos} = state),
+    do: {[], state}
+
+  @impl true
   def handle_parent_notification(
         :reset_session,
         _ctx,
         %State{
-          status: status,
+          status: prev_status,
           session_pid: session_pid,
           gemini_opts: gemini_opts
         } = state
@@ -368,13 +377,18 @@ defmodule Membrane.Gemini.Endpoint do
 
     state = %{state | status: :standby, session_pid: new_session_pid}
 
-    if status == :receiving do
-      {maybe_eos_action, state} = maybe_eos(state)
+    case prev_status do
+      :receiving ->
+        {maybe_eos_action, state} = maybe_eos(state)
 
-      {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}}] ++
-         maybe_eos_action, state}
-    else
-      {[], state}
+        {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}}] ++
+           maybe_eos_action, state}
+
+      :text_sent ->
+        maybe_eos(state)
+
+      :standby ->
+        {[], state}
     end
   end
 
