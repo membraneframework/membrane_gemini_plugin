@@ -104,6 +104,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  @impl true
   def handle_buffer(
         :text_input,
         %Membrane.Buffer{payload: payload},
@@ -127,6 +128,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -164,6 +166,7 @@ defmodule Membrane.Gemini.Endpoint do
     end
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -176,6 +179,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -192,6 +196,7 @@ defmodule Membrane.Gemini.Endpoint do
        maybe_eos_action, state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -206,6 +211,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -219,6 +225,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[event: {:output, %Membrane.Gemini.Events.Transcript{text: text, direction: :input}}], state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -241,6 +248,7 @@ defmodule Membrane.Gemini.Endpoint do
     end
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -259,6 +267,7 @@ defmodule Membrane.Gemini.Endpoint do
        maybe_eos_action, state}
   end
 
+  @impl true
   def handle_info(
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
@@ -271,11 +280,13 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
+  @impl true
   def handle_info({:on_message, msg}, _ctx, state) do
     Membrane.Logger.warning("Unrecognised message received by session: #{inspect(msg)}")
     {[], state}
   end
 
+  @impl true
   def handle_info(
         {:on_go_away, go_away_message},
         _ctx,
@@ -315,6 +326,7 @@ defmodule Membrane.Gemini.Endpoint do
     {[], %{state | status: :standby, session_pid: new_session_pid}}
   end
 
+  @impl true
   def handle_info(message, _ctx, state) do
     Membrane.Logger.warning("Unrecognised message received by endpoint: #{inspect(message)}")
     {[], state}
@@ -355,6 +367,7 @@ defmodule Membrane.Gemini.Endpoint do
     maybe_eos(%{state | audio_eos_received?: true})
   end
 
+  @impl true
   def handle_end_of_stream(:text_input, _ctx, state) do
     maybe_eos(%{state | text_eos_received?: true})
   end

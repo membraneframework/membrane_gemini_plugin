@@ -96,9 +96,11 @@ defmodule Membrane.Gemini.QueueFilter do
     {[forward: event], state}
   end
 
+  @impl true
   def handle_event(:input, %Membrane.Gemini.Events.Thinking{} = event, _ctx, state),
     do: do_handle_event(event, state)
 
+    @impl true
   def handle_event(
         :input,
         %Membrane.Gemini.Events.ResponseStart{} = start_event,
@@ -115,6 +117,7 @@ defmodule Membrane.Gemini.QueueFilter do
     end
   end
 
+  @impl true
   def handle_event(
         :input,
         %Membrane.Gemini.Events.ResponseEnd{interrupted?: false} = event,
@@ -126,6 +129,7 @@ defmodule Membrane.Gemini.QueueFilter do
     {[], %{state | queue: Qex.push(queue, event)}}
   end
 
+  @impl true
   def handle_event(
         :input,
         %Membrane.Gemini.Events.ResponseEnd{interrupted?: true} = event,
