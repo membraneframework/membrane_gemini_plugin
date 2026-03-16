@@ -20,39 +20,50 @@ defmodule Membrane.Gemini.Endpoint do
   )
 
   def_options(
-    config: [
-      spec: Membrane.Gemini.Config.t(),
-      description:
-        "See option description of `Membrane.Gemini.Bin` or the moduledoc of `Membrane.Gemini.Config`"
+    model: [
+      spec: String.t(),
+      default: "gemini-2.5-flash-native-audio-latest"
+    ],
+    system_instruction: [
+      spec: nil | String.t(),
+      default: nil
+    ],
+    extra_opts: [
+      spec: Keyword.t(),
+      default: []
     ]
   )
 
   defmodule State do
     @type t :: %__MODULE__{
             status: :standby | :text_sent | :receiving | :eos,
-            session_config: Membrane.Gemini.Config.t(),
+            gemini_opts: %{
+              model: String.t(),
+              system_instruction: nil | String.t(),
+              extra_opts: Keyword.t()
+            },
             session_pid: pid(),
-            in_audio_eos_received?: boolean(),
-            in_text_eos_received?: boolean()
+            audio_eos_received?: boolean(),
+            text_eos_received?: boolean()
           }
 
     @enforce_keys [
-      :session_config,
+      :gemini_opts,
       :session_pid
     ]
 
     defstruct @enforce_keys ++
                 [
                   status: :standby,
-                  in_audio_eos_received?: false,
-                  in_text_eos_received?: false
+                  audio_eos_received?: false,
+                  text_eos_received?: false
                 ]
   end
 
   @impl true
-  def handle_init(_ctx, %{config: config} = _opts) do
-    session_pid = create_session(config)
-    {[], %State{session_config: config, session_pid: session_pid}}
+  def handle_init(_ctx, opts) do
+    session_pid = create_session(opts)
+    {[], %State{gemini_opts: opts, session_pid: session_pid}}
   end
 
   @impl true
@@ -265,15 +276,10 @@ defmodule Membrane.Gemini.Endpoint do
     {[], state}
   end
 
-  def handle_info({:on_error, msg}, _ctx, state) do
-    Membrane.Logger.error("Unhandled error received by session: #{inspect(msg)}")
-    {[], state}
-  end
-
   def handle_info(
         {:on_go_away, go_away_message},
         _ctx,
-        %State{session_pid: session_pid, session_config: config, status: status} = state
+        %State{session_pid: session_pid, gemini_opts: gemini_opts, status: status} = state
       ) do
     if status == :receiving do
       Membrane.Logger.warning("Unexpected go_away received while receiving model response")
@@ -305,7 +311,7 @@ defmodule Membrane.Gemini.Endpoint do
           nil
       end
 
-    new_session_pid = restart_session(session_pid, %{config | resume_handle: resume_handle})
+    new_session_pid = restart_session(session_pid, gemini_opts, resume_handle)
     {[], %{state | status: :standby, session_pid: new_session_pid}}
   end
 
@@ -321,10 +327,10 @@ defmodule Membrane.Gemini.Endpoint do
         %State{
           status: status,
           session_pid: session_pid,
-          session_config: config
+          gemini_opts: gemini_opts
         } = state
       ) do
-    new_session_pid = restart_session(session_pid, %{config | resume_handle: nil})
+    new_session_pid = restart_session(session_pid, gemini_opts)
 
     state = %{state | status: :standby, session_pid: new_session_pid}
 
@@ -346,16 +352,16 @@ defmodule Membrane.Gemini.Endpoint do
       {:error, reason} -> Membrane.Logger.warning("Audio cache flush failed: #{inspect(reason)}")
     end
 
-    maybe_eos(%{state | in_audio_eos_received?: true})
+    maybe_eos(%{state | audio_eos_received?: true})
   end
 
   def handle_end_of_stream(:text_input, _ctx, state) do
-    maybe_eos(%{state | in_text_eos_received?: true})
+    maybe_eos(%{state | text_eos_received?: true})
   end
 
-  @spec create_session(config :: Membrane.Gemini.Config.t()) :: pid()
-  defp create_session(%Membrane.Gemini.Config{} = config) do
-    Membrane.Logger.debug("Creating new session with config: #{inspect(config)}")
+  @spec create_session(gemini_opts :: Keyword.t(), resume_handle :: nil | String.t()) :: pid()
+  defp create_session(gemini_opts, resume_handle \\ nil) do
+    Membrane.Logger.debug("Creating new session with config: #{inspect(gemini_opts)}")
     filter_pid = self()
 
     # NOTE: A sender for `:on_transcription` is unnecessary since we also receive the transcripts
@@ -366,7 +372,7 @@ defmodule Membrane.Gemini.Endpoint do
       [
         :on_message,
         :on_error,
-        :on_go_away,
+        :on_go_away
       ]
       |> Enum.map(fn callback_atom ->
         {
@@ -375,28 +381,36 @@ defmodule Membrane.Gemini.Endpoint do
         }
       end)
 
-    config_opts =
-      config
-      |> Map.delete(:extra_opts)
-      |> Map.from_struct()
-      |> Keyword.new()
-
-    gemini_opts =
-      gemini_callbacks ++ config_opts ++ config.extra_opts
-
     {:ok, session_pid} =
-      Gemini.Live.Session.start_link(gemini_opts)
+      Gemini.Live.Session.start_link(
+        gemini_callbacks ++
+          [
+            resume_handle: resume_handle,
+            model: gemini_opts.model,
+            system_instruction: gemini_opts.system_instruction
+          ] ++
+          gemini_opts.extra_opts ++
+          [
+            auth: :gemini,
+            api_vesion: "v1beta",
+            input_audio_transcription: %{},
+            output_audio_transcription: %{},
+            session_resumption: %{},
+            generation_config: %{response_modalities: [:audio]}
+          ]
+      )
 
     session_pid
   end
 
   @spec restart_session(
           session_pid :: pid(),
-          config :: Membrane.Gemini.Config.t()
+          gemini_opts :: map(),
+          resume_handle :: nil | String.t()
         ) :: pid()
-  defp restart_session(session_pid, config) do
+  defp restart_session(session_pid, gemini_opts, resume_handle \\ nil) do
     Gemini.Live.Session.close(session_pid)
-    new_session_pid = create_session(config)
+    new_session_pid = create_session(gemini_opts, resume_handle)
 
     case Gemini.Live.Session.connect(new_session_pid) do
       :ok -> :ok
@@ -411,8 +425,8 @@ defmodule Membrane.Gemini.Endpoint do
   defp maybe_eos(
          %State{
            status: :standby,
-           in_audio_eos_received?: true,
-           in_text_eos_received?: true,
+           audio_eos_received?: true,
+           text_eos_received?: true,
            session_pid: pid
          } = state
        ) do

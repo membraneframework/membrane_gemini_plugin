@@ -10,14 +10,14 @@ defmodule Membrane.Gemini.Integration.SimpleTest do
     sample_format: :s16le
   }
 
-  test "Gemini responds to a simple text prompt", %{gemini_config: gemini_config} = _ctx do
+  test "Gemini responds to a simple text prompt", %{extra_opts: extra_opts} = _ctx do
     spec = [
       child(:audio_source, %Membrane.Testing.Source{
         stream_format: @input_audio_format,
         output: []
       })
       |> via_in(:audio_input)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete, config: gemini_config})
+      |> child(:gemini, %Membrane.Gemini.Bin{mode: :discrete, extra_opts: extra_opts})
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{
         output: ["Hello, world!"]

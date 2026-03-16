@@ -15,9 +15,7 @@ defmodule Membrane.Gemini.Case do
 
     {:ok,
      mock_run?: mock_run?,
-     gemini_config: %Membrane.Gemini.Config{
-       extra_opts: if(mock_run?, do: [websocket_module: Membrane.Gemini.MockWebSocket], else: [])
-     }}
+     extra_opts: if(mock_run?, do: [websocket_module: Membrane.Gemini.MockWebSocket], else: [])}
   end
 end
 

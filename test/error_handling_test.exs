@@ -11,10 +11,8 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
     sample_format: :s16le
   }
 
-  @spec pipeline_spec(gemini_config :: Membrane.Gemini.Config.t()) :: [
-          Membrane.ChildrenSpec.builder()
-        ]
-  defp pipeline_spec(gemini_config) do
+  @spec pipeline_spec(extra_opts :: Keyword.t()) :: [Membrane.ChildrenSpec.builder()]
+  defp pipeline_spec(extra_opts) do
     [
       child(:audio_source, %Membrane.Testing.Source{
         stream_format: @input_audio_format,
@@ -23,7 +21,7 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
       |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{
         mode: :discrete,
-        config: gemini_config
+        extra_opts: extra_opts
       })
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: ["Hello"]})
@@ -32,10 +30,10 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
     ]
   end
 
-  @spec run_pipeline_assert_crash(gemini_config :: Membrane.Gemini.Config.t()) :: any()
-  defp run_pipeline_assert_crash(gemini_config) do
+  @spec run_pipeline_assert_crash(extra_opts :: Keyword.t()) :: any()
+  defp run_pipeline_assert_crash(extra_opts) do
     {:ok, supervisor, pipeline} =
-      Membrane.Testing.Pipeline.start(spec: pipeline_spec(gemini_config))
+      Membrane.Testing.Pipeline.start(spec: pipeline_spec(extra_opts))
 
     pipeline_ref = Process.monitor(pipeline)
     supervisor_ref = Process.monitor(supervisor)
@@ -67,14 +65,14 @@ defmodule Membrane.Gemini.Integration.ErrorHandlingTest do
       :ok
     end
 
-    test "pipeline fails when API key is missing", %{gemini_config: gemini_config} = _ctx do
+    test "pipeline fails when API key is missing", %{extra_opts: extra_opts} = _ctx do
       System.delete_env("GEMINI_API_KEY")
-      run_pipeline_assert_crash(gemini_config)
+      run_pipeline_assert_crash(extra_opts)
     end
 
-    test "pipeline fails when API key is invalid", %{gemini_config: gemini_config} = _ctx do
+    test "pipeline fails when API key is invalid", %{extra_opts: extra_opts} = _ctx do
       System.put_env("GEMINI_API_KEY", "invalid_key_12345")
-      run_pipeline_assert_crash(gemini_config)
+      run_pipeline_assert_crash(extra_opts)
     end
   end
 end
