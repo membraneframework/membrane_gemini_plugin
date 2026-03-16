@@ -23,7 +23,8 @@ defmodule Membrane.Gemini.QueueFilter do
   def handle_init(_ctx, _opts) do
     state = %{
       queue: Qex.new(),
-      pts_counter: 0
+      pts_counter: 0,
+      last_buffer_duration: Membrane.Time.milliseconds(40)
     }
 
     {[], state}
@@ -53,10 +54,10 @@ defmodule Membrane.Gemini.QueueFilter do
         %{queue: queue, pts_counter: pts_counter} =
           state
       ) do
-    # NOTE: buffer byte-size assumed through empirical tests
-    buffer_duration = RawAudio.bytes_to_time(1920, @audio_format)
-
     {new_queue, events} = pop_while_event(queue)
+
+    event_actions =
+      Enum.map(events, fn event -> {:event, {:output, event}} end)
 
     {buffer, new_queue} =
       case Qex.pop(new_queue) do
@@ -64,6 +65,8 @@ defmodule Membrane.Gemini.QueueFilter do
           {%{buffer | pts: pts_counter}, new_queue}
 
         {:empty, _queue} ->
+          buffer_duration = state.last_buffer_duration
+
           silence_buffer = %Membrane.Buffer{
             payload: RawAudio.silence(@audio_format, buffer_duration),
             pts: pts_counter
@@ -72,11 +75,20 @@ defmodule Membrane.Gemini.QueueFilter do
           {silence_buffer, new_queue}
       end
 
+    buffer_duration = buffer.payload |> byte_size() |> RawAudio.bytes_to_time(@audio_format)
+
     actions =
-      Enum.map(events, fn event -> {:event, {:output, event}} end) ++
+      event_actions ++
         [buffer: {:output, buffer}]
 
-    {actions, %{state | queue: new_queue, pts_counter: pts_counter + buffer_duration}}
+    state =
+      %{
+        queue: new_queue,
+        last_buffer_duration: min(buffer_duration, Membrane.Time.milliseconds(40)),
+        pts_counter: pts_counter + buffer_duration
+      }
+
+    {actions, state}
   end
 
   @impl true
@@ -85,7 +97,8 @@ defmodule Membrane.Gemini.QueueFilter do
         %Membrane.Gemini.Events.Transcript{direction: :output} = event,
         _ctx,
         state
-      ), do: do_handle_event(event, state)
+      ),
+      do: do_handle_event(event, state)
 
   def handle_event(
         :input,
@@ -100,7 +113,7 @@ defmodule Membrane.Gemini.QueueFilter do
   def handle_event(:input, %Membrane.Gemini.Events.Thinking{} = event, _ctx, state),
     do: do_handle_event(event, state)
 
-    @impl true
+  @impl true
   def handle_event(
         :input,
         %Membrane.Gemini.Events.ResponseStart{} = start_event,
