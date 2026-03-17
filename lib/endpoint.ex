@@ -25,20 +25,6 @@ defmodule Membrane.Gemini.Endpoint do
     extra_opts: [spec: Keyword.t()]
   )
 
-  # Status transitions:
-  #
-  # | From       | To         | Trigger                           | Context                                                                              |
-  # |------------|------------|-----------------------------------|--------------------------------------------------------------------------------------|
-  # | :standby   | :text_sent | text buffer received              | Text prompt sent, awaiting model response; prevents EOS before response received     |
-  # | :receiving | :text_sent | text buffer received              | Sent text mid-response (barge-in); awaiting server interruption, then new response   |
-  # | :********* | :receiving | model turn / output transcription | Model began response; send ResponseStart                                             |
-  # | :receiving | :standby   | generation_complete               | Model finished its turn naturally; send ResponseEnd{interrupted: false}              |
-  # | :receiving | :standby   | interrupted                       | Server confirmed interruption; send ResponseEnd{interrupted: true}                   |
-  # | :text_sent | :text_sent | interrupted                       | Server confirmed interruption of prior response; waiting for new response            |
-  # | :receiving | :standby   | go_away / reset_session           | Session restarted mid-response; treated as interruption                              |
-  # | :text_sent | :standby   | go_away / reset_session           | Session restarted while awaiting response                                            |
-  # | :standby   | :eos       | both inputs EOS, no pending turn  | All input consumed, no response in flight; pipeline terminates                       |
-
   defmodule State do
     @type t :: %__MODULE__{
             status:
