@@ -26,6 +26,8 @@ defmodule Membrane.Gemini.Endpoint do
   )
 
   defmodule State do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             status:
               :standby
