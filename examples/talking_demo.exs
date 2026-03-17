@@ -16,6 +16,7 @@ defmodule Gemini.Demo.TextSource do
   @impl true
   def handle_init(_ctx, _opts) do
     source_pid = self()
+
     {:ok, _task_pid} =
       Task.start_link(fn ->
         IO.stream(:line)
@@ -32,8 +33,8 @@ defmodule Gemini.Demo.TextSource do
   def handle_playing(_ctx, state),
     do: {[stream_format: {:output, %Membrane.RemoteStream{type: :bytestream}}], state}
 
-  def handle_info({:text, line}, _ctx, state), do:
-    {[buffer: {:output, %Membrane.Buffer{payload: line}}], state}
+  def handle_info({:text, line}, _ctx, state),
+    do: {[buffer: {:output, %Membrane.Buffer{payload: line}}], state}
 end
 
 defmodule Gemini.Demo.Mic.LivePipeline do
