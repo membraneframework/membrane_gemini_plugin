@@ -122,7 +122,14 @@ defmodule Membrane.Gemini.QueueFilter do
       ) do
     maybe_end_event =
       case Qex.pop_back(queue) do
-        {{:value, _buffer_or_event}, _queue} ->
+        {{:value, element}, _queue} ->
+          if not match?(%Membrane.Gemini.Events.ResponseEnd{}, element) do
+            Membrane.Logger.warning("""
+            Received `ResponseStart` event, but the queue is non-empty
+            and missing a `ResponseEnd` event, indicating it missing.
+            """)
+          end
+
           [forward: %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}]
 
         {:empty, _queue} ->
@@ -139,8 +146,8 @@ defmodule Membrane.Gemini.QueueFilter do
         _ctx,
         %{queue: queue} = state
       ) do
-    # invariant: once this event is pushed to the queue, no further elements may be pushed
-    # until it is popped or the queue is discarded by receiving a ResponseStartEvent
+    # NOTE: once this event is pushed to the queue, no further elements should be pushed
+    # until it is popped or the queue is discarded by receiving a `ResponseStart` event
     {[], %{state | queue: Qex.push(queue, event)}}
   end
 
@@ -174,7 +181,7 @@ defmodule Membrane.Gemini.QueueFilter do
         {queue, Enum.reverse(events)}
 
       {{:value, event}, new_queue} ->
-        {new_queue, [event | events]}
+        pop_while_event(new_queue, [event | events])
 
       {:empty, _queue} ->
         {queue, Enum.reverse(events)}
