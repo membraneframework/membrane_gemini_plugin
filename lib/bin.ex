@@ -2,23 +2,6 @@ defmodule Membrane.Gemini.Bin do
   @moduledoc """
   A Membrane Bin for integrating with Google's Gemini Live API.
 
-  ## Pads
-
-  - `:audio_input` — mono 16-bit PCM at 16 kHz. Buffers are forwarded to the model
-    as realtime audio input. Sending end-of-stream flushes any cached audio on the
-    server side.
-  - `:text_input` — an arbitrary bytestream. Each buffer's payload is sent verbatim
-    as a realtime text input chunk.
-  - `:output` — mono 16-bit PCM at 24 kHz, carrying the model's audio responses.
-    In addition to audio buffers, the following Membrane events are emitted on this pad:
-    - `Membrane.Gemini.Events.ResponseStart` — signals the beginning of a new model turn.
-    - `Membrane.Gemini.Events.ResponseEnd` — signals turn completion or barge-in
-      interruption (`interrupted?: true`).
-    - `Membrane.Gemini.Events.Thinking` — carries intermediate thinking text when the
-      model's thinking mode is enabled.
-    - `Membrane.Gemini.Events.Transcript` — carries transcription segments for both
-      input audio (`direction: :input`) and the model's audio output (`direction: :output`).
-
   ## Session lifecycle
 
   A `Gemini.Live.Session` is started during element initialisation and connected when
@@ -30,6 +13,15 @@ defmodule Membrane.Gemini.Bin do
 
   A `:reset_session` parent notification can also be sent at any time to force an
   immediate session restart (without a resume handle).
+
+  In addition to audio buffers, the `:output` pad emits events relevant to the streamed response:
+  - `Membrane.Gemini.Events.ResponseStart` — signals the beginning of a new model turn.
+  - `Membrane.Gemini.Events.ResponseEnd` — signals turn completion or barge-in
+    interruption (`interrupted?: true`).
+  - `Membrane.Gemini.Events.Thinking` — carries intermediate thinking text when the
+    model's thinking mode is enabled.
+  - `Membrane.Gemini.Events.Transcript` — carries transcription segments for both
+    input audio (`direction: :input`) and the model's audio output (`direction: :output`).
 
   ## End of stream
 
