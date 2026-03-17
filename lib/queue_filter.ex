@@ -54,13 +54,13 @@ defmodule Membrane.Gemini.QueueFilter do
         %{queue: queue, pts_counter: pts_counter} =
           state
       ) do
-    {new_queue, events} = pop_while_event(queue)
+    {queue, events} = pop_while_event(queue)
 
     event_actions =
       Enum.map(events, fn event -> {:event, {:output, event}} end)
 
     {buffer, new_queue} =
-      case Qex.pop(new_queue) do
+      case Qex.pop(queue) do
         {{:value, %Membrane.Buffer{} = buffer}, new_queue} ->
           {%{buffer | pts: pts_counter}, new_queue}
 
@@ -72,7 +72,7 @@ defmodule Membrane.Gemini.QueueFilter do
             pts: pts_counter
           }
 
-          {silence_buffer, new_queue}
+          {silence_buffer, queue}
       end
 
     buffer_duration = buffer.payload |> byte_size() |> RawAudio.bytes_to_time(@audio_format)
