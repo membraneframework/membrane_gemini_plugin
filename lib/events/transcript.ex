@@ -1,6 +1,8 @@
 defmodule Membrane.Gemini.Events.Transcript do
   @moduledoc """
-  Contains transcripts audio data, either client input or model response.
+  Contains transcripts for audio data,
+  either client input (`direction: :input`),
+  or model response (`direction: :output`).
   """
 
   @derive Membrane.EventProtocol
