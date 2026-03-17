@@ -30,6 +30,7 @@ defmodule GeminiMock.Handler do
   def init(opts) do
     state = %{
       setup_done: false,
+      close_error: Map.get(opts, :close_error),
       go_away_after_ms: Map.get(opts, :go_away_after_ms),
       go_away_time_left_ms: Map.get(opts, :go_away_time_left_ms, 10_000),
       response_delay_ms: Map.get(opts, :response_delay_ms, 0),
@@ -85,6 +86,14 @@ defmodule GeminiMock.Handler do
   # ---------------------------------------------------------------------------
   # Message routing
   # ---------------------------------------------------------------------------
+
+  defp process_message(%{"setup" => setup}, %{close_error: {code, reason}} = state) do
+    Logger.warning(
+      "GeminiMock: setup received but rejecting, model=#{setup["model"]}, code=#{code}"
+    )
+
+    {:stop, :normal, {code, reason}, state}
+  end
 
   defp process_message(%{"setup" => setup}, state) do
     Logger.debug("GeminiMock: setup received, model=#{setup["model"]}")

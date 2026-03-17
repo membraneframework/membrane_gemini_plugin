@@ -32,46 +32,44 @@ defmodule Membrane.Gemini.MockWebSocket do
     gun_opts = %{protocols: [:http], transport: :tcp}
 
     case :gun.open(@mock_host, port, gun_opts) do
-      {:ok, pid} ->
-        case :gun.await_up(pid, @connect_timeout) do
-          {:ok, _protocol} ->
-            # Include API key as query parameter
-            api_key = System.get_env("GEMINI_API_KEY", "")
-            path_with_key = "#{@mock_path}?key=#{api_key}"
+      {:ok, pid} -> do_connect(pid)
+      {:error, reason} -> {:error, {:open_failed, reason}}
+    end
+  end
 
-            headers = [{"content-type", "application/json"}]
-            stream_ref = :gun.ws_upgrade(pid, path_with_key, headers, %{})
+  defp do_connect(pid) do
+    case :gun.await_up(pid, @connect_timeout) do
+      {:ok, _protocol} -> do_upgrade(pid)
+      {:error, reason} -> {:error, {:connection_failed, reason}}
+    end
+  end
 
-            receive do
-              {:gun_upgrade, ^pid, ^stream_ref, ["websocket"], _headers} ->
-                {:ok, %__MODULE__{gun_pid: pid, stream_ref: stream_ref, status: :connected}}
+  defp do_upgrade(pid) do
+    api_key = Application.get_env(:gemini_ex, :api_key)
+    path = if api_key, do: "#{@mock_path}?key=#{api_key}", else: @mock_path
+    headers = [{"content-type", "application/json"}]
+    stream_ref = :gun.ws_upgrade(pid, path, headers, %{})
 
-              {:gun_response, ^pid, ^stream_ref, :nofin, status, _headers} ->
-                # Read the response body for non-final responses
-                body = read_response_body(pid, stream_ref)
-                :gun.close(pid)
-                {:error, {:upgrade_failed, status, body}}
+    receive do
+      {:gun_upgrade, ^pid, ^stream_ref, ["websocket"], _headers} ->
+        {:ok, %__MODULE__{gun_pid: pid, stream_ref: stream_ref, status: :connected}}
 
-              {:gun_response, ^pid, ^stream_ref, :fin, status, _headers} ->
-                :gun.close(pid)
-                {:error, {:upgrade_failed, status, []}}
+      {:gun_response, ^pid, ^stream_ref, :nofin, status, _headers} ->
+        body = read_response_body(pid, stream_ref)
+        :gun.close(pid)
+        {:error, {:upgrade_failed, status, body}}
 
-              {:gun_error, ^pid, ^stream_ref, reason} ->
-                :gun.close(pid)
-                {:error, {:upgrade_error, reason}}
-            after
-              @upgrade_timeout ->
-                :gun.close(pid)
-                {:error, :upgrade_timeout}
-            end
+      {:gun_response, ^pid, ^stream_ref, :fin, status, _headers} ->
+        :gun.close(pid)
+        {:error, {:upgrade_failed, status, []}}
 
-          {:error, reason} ->
-            :gun.close(pid)
-            {:error, {:connection_failed, reason}}
-        end
-
-      {:error, reason} ->
-        {:error, {:open_failed, reason}}
+      {:gun_error, ^pid, ^stream_ref, reason} ->
+        :gun.close(pid)
+        {:error, {:upgrade_error, reason}}
+    after
+      @upgrade_timeout ->
+        :gun.close(pid)
+        {:error, :upgrade_timeout}
     end
   end
 
