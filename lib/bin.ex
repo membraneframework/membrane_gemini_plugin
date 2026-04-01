@@ -146,7 +146,7 @@ defmodule Membrane.Gemini.Bin do
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
   @impl true
-  def handle_init(_ctx, %{
+  def handle_init(_ctx, %__MODULE__{
         mode: mode,
         model: model,
         system_instruction: system_instruction,
