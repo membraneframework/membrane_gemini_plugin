@@ -15,7 +15,8 @@ defmodule Membrane.Gemini.Mixfile do
       dialyzer: dialyzer(),
 
       # hex
-      description: "Gemini Plugin for Membrane Framework",
+      description:
+        "Membrane plugin for integrating with Google's Gemini Live API, enabling low-latency bidirectional audio streaming with support for voice activity detection, session management, transcription events, and barge-in interruption handling",
       package: package(),
 
       # docs
