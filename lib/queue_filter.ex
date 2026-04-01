@@ -5,6 +5,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   require Membrane.Logger
   alias Membrane.RawAudio
+  alias Membrane.Gemini.Events
 
   @audio_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
@@ -90,45 +91,30 @@ defmodule Membrane.Gemini.QueueFilter do
   end
 
   @impl true
-  def handle_event(
-        :input,
-        %Membrane.Gemini.Events.Transcript{direction: :output} = event,
-        _ctx,
-        state
-      ),
-      do: do_handle_event(event, state)
-
-  def handle_event(
-        :input,
-        %Membrane.Gemini.Events.Transcript{direction: :input} = event,
-        _ctx,
-        state
-      ) do
-    {[forward: event], state}
-  end
-
-  @impl true
-  def handle_event(:input, %Membrane.Gemini.Events.Thinking{} = event, _ctx, state),
+  def handle_event(:input, %Events.Transcript{direction: :output} = event, _ctx, state),
     do: do_handle_event(event, state)
 
   @impl true
-  def handle_event(
-        :input,
-        %Membrane.Gemini.Events.ResponseStart{} = start_event,
-        _ctx,
-        %{queue: queue} = state
-      ) do
+  def handle_event(:input, %Events.Transcript{direction: :input} = event, _ctx, state),
+    do: {[forward: event], state}
+
+  @impl true
+  def handle_event(:input, %Events.Thinking{} = event, _ctx, state),
+    do: do_handle_event(event, state)
+
+  @impl true
+  def handle_event(:input, %Events.ResponseStart{} = start_event, _ctx, %{queue: queue} = state) do
     maybe_end_event =
       case Qex.pop_back(queue) do
         {{:value, element}, _queue} ->
-          if not match?(%Membrane.Gemini.Events.ResponseEnd{}, element) do
+          if not match?(%Events.ResponseEnd{}, element) do
             Membrane.Logger.warning("""
             Received `ResponseStart` event, but the queue is non-empty
             and missing a `ResponseEnd` event, indicating it missing.
             """)
           end
 
-          [forward: %Membrane.Gemini.Events.ResponseEnd{interrupted?: true}]
+          [forward: %Events.ResponseEnd{interrupted?: true}]
 
         {:empty, _queue} ->
           []
@@ -140,7 +126,7 @@ defmodule Membrane.Gemini.QueueFilter do
   @impl true
   def handle_event(
         :input,
-        %Membrane.Gemini.Events.ResponseEnd{interrupted?: false} = event,
+        %Events.ResponseEnd{interrupted?: false} = event,
         _ctx,
         %{queue: queue} = state
       ) do
@@ -150,12 +136,7 @@ defmodule Membrane.Gemini.QueueFilter do
   end
 
   @impl true
-  def handle_event(
-        :input,
-        %Membrane.Gemini.Events.ResponseEnd{interrupted?: true} = event,
-        _ctx,
-        state
-      ) do
+  def handle_event(:input, %Events.ResponseEnd{interrupted?: true} = event, _ctx, state) do
     {[forward: event], %{state | queue: Qex.new()}}
   end
 
