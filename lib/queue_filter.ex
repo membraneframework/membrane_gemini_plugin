@@ -23,7 +23,7 @@ defmodule Membrane.Gemini.QueueFilter do
     state = %{
       queue: Qex.new(),
       pts_counter: 0,
-      last_buffer_duration: Membrane.Time.milliseconds(0)
+      last_buffer_duration: Membrane.Time.milliseconds(40)
     }
 
     {[], state}
