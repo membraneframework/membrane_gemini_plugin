@@ -96,7 +96,7 @@ defmodule Membrane.Gemini.QueueFilter do
 
   @impl true
   def handle_event(:input, %Events.Transcript{direction: :input} = event, _ctx, state),
-    do: {[forward: event], state}
+    do: {[event: {:output, event}], state}
 
   @impl true
   def handle_event(:input, %Events.Thinking{} = event, _ctx, state),
@@ -114,13 +114,13 @@ defmodule Membrane.Gemini.QueueFilter do
             """)
           end
 
-          [forward: %Events.ResponseEnd{interrupted?: true}]
+          [event: {:output, %Events.ResponseEnd{interrupted?: true}}]
 
         {:empty, _queue} ->
           []
       end
 
-    {maybe_end_event ++ [forward: start_event], %{state | queue: Qex.new()}}
+    {maybe_end_event ++ [event: {:output, start_event}], %{state | queue: Qex.new()}}
   end
 
   @impl true
@@ -137,18 +137,18 @@ defmodule Membrane.Gemini.QueueFilter do
 
   @impl true
   def handle_event(:input, %Events.ResponseEnd{interrupted?: true} = event, _ctx, state) do
-    {[forward: event], %{state | queue: Qex.new()}}
+    {[event: {:output, event}], %{state | queue: Qex.new()}}
   end
 
   @spec do_handle_event(event :: Membrane.Event.t(), state :: map()) ::
-          {[Membrane.Element.Action.forward()], map()}
+          {[Membrane.Element.Action.event()], map()}
   defp do_handle_event(event, %{queue: queue} = state) do
     case Qex.pop(queue) do
       {{:value, _value}, _queue} ->
         {[], %{state | queue: Qex.push(queue, event)}}
 
       {:empty, _queue} ->
-        {[forward: event], state}
+        {[event: {:output, event}], state}
     end
   end
 
