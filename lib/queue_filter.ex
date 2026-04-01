@@ -8,16 +8,14 @@ defmodule Membrane.Gemini.QueueFilter do
 
   @audio_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
-  def_input_pad(:input,
+  def_input_pad :input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :push
-  )
 
-  def_output_pad(:output,
+  def_output_pad :output,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :manual,
     demand_unit: :buffers
-  )
 
   @impl true
   def handle_init(_ctx, _opts) do

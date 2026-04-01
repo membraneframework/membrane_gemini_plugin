@@ -34,108 +34,103 @@ defmodule Membrane.Gemini.Bin do
 
   alias Membrane.RawAudio
 
-  def_options(
-    mode: [
-      spec: :paced | :raw,
-      description: """
-      Whether the element should output audio as a continuous, real-time stream,
-      intertwining the response audio with silence (`:paced`),
-      or just the response audio buffers (`:raw`).
-      `:paced` mode is ideal for straightforward LLM integrations
-      that don't require additional audio processing.
-      `:raw` mode is better if one wants more fine-grained control
-      over the incoming audio stream.
-      """,
-      default: :paced
-    ],
-    model: [
-      spec: String.t(),
-      description: """
-      Name of the model that should be used.
-      For details, see `Gemini.Live.Models`.
-      """,
-      default: "gemini-2.5-flash-native-audio-latest"
-    ],
-    system_instruction: [
-      spec: nil | String.t(),
-      description: """
-      The system instruction that will be attached to each prompt for the model to follow.
-      """,
-      default: nil
-    ],
-    extra_opts: [
-      spec: Keyword.t(),
-      description: """
-      Extra options that will be passed to `Gemini.Live.Session.start_link/1`.
-      Note that overriding some options that the bin sets internally may break functionality,
-      e.g. enabling manual voice activity detection.
+  def_options mode: [
+                spec: :paced | :raw,
+                description: """
+                Whether the element should output audio as a continuous, real-time stream,
+                intertwining the response audio with silence (`:paced`),
+                or just the response audio buffers (`:raw`).
+                `:paced` mode is ideal for straightforward LLM integrations
+                that don't require additional audio processing.
+                `:raw` mode is better if one wants more fine-grained control
+                over the incoming audio stream.
+                """,
+                default: :paced
+              ],
+              model: [
+                spec: String.t(),
+                description: """
+                Name of the model that should be used.
+                For details, see `Gemini.Live.Models`.
+                """,
+                default: "gemini-2.5-flash-native-audio-latest"
+              ],
+              system_instruction: [
+                spec: nil | String.t(),
+                description: """
+                The system instruction that will be attached to each prompt for the model to follow.
+                """,
+                default: nil
+              ],
+              extra_opts: [
+                spec: Keyword.t(),
+                description: """
+                Extra options that will be passed to `Gemini.Live.Session.start_link/1`.
+                Note that overriding some options that the bin sets internally may break functionality,
+                e.g. enabling manual voice activity detection.
 
-      Examples:
+                Examples:
 
-      ## Changing the voice
-      ```
-      %Membrane.Gemini.Bin{
-        extra_opts: [
-          generation_config: %{
-            # This has to be set
-            response_modalities: [:audio],
-            speech_config: %{
-              voice_config: %{
-                prebuilt_voice_config: %{
-                  voice_name: "Sadachbia"
+                ## Changing the voice
+                ```
+                %Membrane.Gemini.Bin{
+                  extra_opts: [
+                    generation_config: %{
+                      # This has to be set
+                      response_modalities: [:audio],
+                      speech_config: %{
+                        voice_config: %{
+                          prebuilt_voice_config: %{
+                            voice_name: "Sadachbia"
+                          }
+                        }
+                      }
+                    }
+                  ]
                 }
-              }
-            }
-          }
-        ]
-      }
-      ```
+                ```
 
-      ## Enabling context window compression
-      ```
-      %Membrane.Gemini.Bin{
-        extra_opts: [
-          context_window_compression: %{
-            trigger_tokens: 16_000,
-            sliding_window: %{
-              target_tokens: 8_000
-            }
-          }
-        ]
-      }
-      ```
+                ## Enabling context window compression
+                ```
+                %Membrane.Gemini.Bin{
+                  extra_opts: [
+                    context_window_compression: %{
+                      trigger_tokens: 16_000,
+                      sliding_window: %{
+                        target_tokens: 8_000
+                      }
+                    }
+                  ]
+                }
+                ```
 
-      ## Fine-tuning automatic VAD
-      ```
-      %Membrane.Gemini.Bin{
-        extra_opts: [
-          realtime_input_config: %{
-            automatic_activity_detection: %{
-              start_of_speech_sensitivity: :high,
-              end_of_speech_sensitivity: :low,
-              prefix_padding_ms: 100,
-              silence_duration_ms: 500
-            }
-          }
-        ]
-      }
-      ```
-      """,
-      default: []
-    ]
-  )
+                ## Fine-tuning automatic VAD
+                ```
+                %Membrane.Gemini.Bin{
+                  extra_opts: [
+                    realtime_input_config: %{
+                      automatic_activity_detection: %{
+                        start_of_speech_sensitivity: :high,
+                        end_of_speech_sensitivity: :low,
+                        prefix_padding_ms: 100,
+                        silence_duration_ms: 500
+                      }
+                    }
+                  ]
+                }
+                ```
+                """,
+                default: []
+              ]
 
-  def_input_pad(:audio_input,
+  def_input_pad :audio_input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 16_000}
-  )
 
-  def_input_pad(:text_input,
+  def_input_pad :text_input,
     accepted_format: %Membrane.RemoteStream{type: :bytestream}
-  )
 
-  def_output_pad(:output,
+  def_output_pad :output,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
-  )
 
   @impl true
   def handle_init(_ctx, %{

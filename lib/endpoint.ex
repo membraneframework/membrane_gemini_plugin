@@ -6,18 +6,15 @@ defmodule Membrane.Gemini.Endpoint do
 
   alias Membrane.RawAudio
 
-  def_input_pad(:audio_input,
+  def_input_pad :audio_input,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 16_000}
-  )
 
-  def_input_pad(:text_input,
+  def_input_pad :text_input,
     accepted_format: %Membrane.RemoteStream{type: :bytestream}
-  )
 
-  def_output_pad(:output,
+  def_output_pad :output,
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :push
-  )
 
   def_options(
     model: [spec: String.t()],
