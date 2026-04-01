@@ -26,7 +26,7 @@ defmodule Gemini.Demo.TextSource do
         |> Stream.run()
       end)
 
-    {[], nil}
+    {[], %{}}
   end
 
   @impl true
