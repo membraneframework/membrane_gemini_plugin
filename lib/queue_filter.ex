@@ -4,8 +4,8 @@ defmodule Membrane.Gemini.QueueFilter do
   use Membrane.Filter
 
   require Membrane.Logger
-  alias Membrane.RawAudio
   alias Membrane.Gemini.Events
+  alias Membrane.RawAudio
 
   @audio_format %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000}
 
