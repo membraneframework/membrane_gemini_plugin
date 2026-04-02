@@ -22,7 +22,7 @@ defmodule Membrane.Gemini.Bin do
   - `Membrane.Gemini.Events.Thinking` — carries intermediate thinking text when the
     model's thinking mode is enabled.
   - `Membrane.Gemini.Events.Transcript` — carries transcription segments for both
-    input audio (`direction: :input`) and the model's audio output (`direction: :output`).
+    input audio (`audio_origin: :client`) and the model's audio output (`audio_origin: :server`).
 
   ## End of stream
 

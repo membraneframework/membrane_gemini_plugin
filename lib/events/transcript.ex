@@ -1,18 +1,18 @@
 defmodule Membrane.Gemini.Events.Transcript do
   @moduledoc """
   Contains transcripts for audio data,
-  either client input (`direction: :input`),
-  or model response (`direction: :output`).
+  either client input (`audio_origin: :client`),
+  or model response (`audio_origin: :server`).
   """
 
   @derive Membrane.EventProtocol
 
   @type t :: %__MODULE__{
           text: String.t(),
-          direction: :input | :output
+          audio_origin: :client | :server
         }
 
-  @enforce_keys [:text, :direction]
+  @enforce_keys [:text, :audio_origin]
 
   defstruct @enforce_keys
 end

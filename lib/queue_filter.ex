@@ -23,7 +23,7 @@ defmodule Membrane.Gemini.QueueFilter do
     state = %{
       queue: Qex.new(),
       pts_counter: 0,
-      last_buffer_duration: Membrane.Time.milliseconds(40)
+      last_buffer_duration: Membrane.Time.milliseconds(0)
     }
 
     {[], state}
@@ -61,14 +61,15 @@ defmodule Membrane.Gemini.QueueFilter do
     {buffer, new_queue} =
       case Qex.pop(queue) do
         {{:value, %Membrane.Buffer{} = buffer}, new_queue} ->
-          {%{buffer | pts: pts_counter}, new_queue}
+          {%{buffer | pts: pts_counter, metadata: %{llm?: true}}, new_queue}
 
         {:empty, _queue} ->
           buffer_duration = state.last_buffer_duration
 
           silence_buffer = %Membrane.Buffer{
             payload: RawAudio.silence(@audio_format, buffer_duration),
-            pts: pts_counter
+            pts: pts_counter,
+            metadata: %{llm?: false}
           }
 
           {silence_buffer, queue}
@@ -91,11 +92,11 @@ defmodule Membrane.Gemini.QueueFilter do
   end
 
   @impl true
-  def handle_event(:input, %Events.Transcript{direction: :output} = event, _ctx, state),
+  def handle_event(:input, %Events.Transcript{audio_origin: :server} = event, _ctx, state),
     do: do_handle_event(event, state)
 
   @impl true
-  def handle_event(:input, %Events.Transcript{direction: :input} = event, _ctx, state),
+  def handle_event(:input, %Events.Transcript{audio_origin: :client} = event, _ctx, state),
     do: {[event: {:output, event}], state}
 
   @impl true

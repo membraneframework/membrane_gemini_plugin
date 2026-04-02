@@ -237,7 +237,7 @@ defmodule Membrane.Gemini.Endpoint do
         _ctx,
         state
       ) do
-    {[event: {:output, %Membrane.Gemini.Events.Transcript{text: text, direction: :input}}], state}
+    {[event: {:output, %Membrane.Gemini.Events.Transcript{text: text, audio_origin: :client}}], state}
   end
 
   @impl true
@@ -268,7 +268,7 @@ defmodule Membrane.Gemini.Endpoint do
         maybe_start_response(
           [
             {:event,
-             {:output, %Membrane.Gemini.Events.Transcript{text: text, direction: :output}}}
+             {:output, %Membrane.Gemini.Events.Transcript{text: text, audio_origin: :server}}}
           ],
           state
         )

@@ -101,7 +101,7 @@ defmodule Membrane.Gemini.Integration.Test do
         assert_sink_event(
           pipeline_pid,
           :sink,
-          %Membrane.Gemini.Events.Transcript{direction: :output},
+          %Membrane.Gemini.Events.Transcript{audio_origin: :server},
           timeout_ms
         )
 
@@ -187,7 +187,7 @@ defmodule Membrane.Gemini.Integration.Test do
     assert_sink_event(
       pipeline_pid,
       :sink,
-      %Membrane.Gemini.Events.Transcript{direction: :input},
+      %Membrane.Gemini.Events.Transcript{audio_origin: :client},
       timeout_ms
     )
 
@@ -197,7 +197,7 @@ defmodule Membrane.Gemini.Integration.Test do
     assert_sink_event(
       pipeline_pid,
       :sink,
-      %Membrane.Gemini.Events.Transcript{direction: :output},
+      %Membrane.Gemini.Events.Transcript{audio_origin: :server},
       timeout_ms
     )
 
