@@ -16,11 +16,10 @@ defmodule Membrane.Gemini.Endpoint do
     accepted_format: %RawAudio{sample_format: :s16le, channels: 1, sample_rate: 24_000},
     flow_control: :push
 
-  def_options(
-    model: [spec: nil | String.t()],
+  def_options model: [spec: nil | String.t()],
     system_instruction: [spec: nil | String.t()],
     extra_opts: [spec: Keyword.t()]
-  )
+
 
   defmodule State do
     @moduledoc false
