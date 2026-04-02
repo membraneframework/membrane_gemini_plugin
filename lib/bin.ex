@@ -57,12 +57,12 @@ defmodule Membrane.Gemini.Bin do
                 default: :paced
               ],
               model: [
-                spec: String.t(),
+                spec: nil | String.t(),
                 description: """
                 Name of the model that should be used.
                 For details, see `Gemini.Live.Models`.
                 """,
-                default: "gemini-2.5-flash-native-audio-latest"
+                default: nil
               ],
               system_instruction: [
                 spec: nil | String.t(),

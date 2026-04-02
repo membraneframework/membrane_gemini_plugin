@@ -17,7 +17,7 @@ defmodule Membrane.Gemini.Endpoint do
     flow_control: :push
 
   def_options(
-    model: [spec: String.t()],
+    model: [spec: nil | String.t()],
     system_instruction: [spec: nil | String.t()],
     extra_opts: [spec: Keyword.t()]
   )
@@ -476,7 +476,7 @@ defmodule Membrane.Gemini.Endpoint do
           gemini_opts.extra_opts ++
           [
             resume_handle: resume_handle,
-            model: gemini_opts.model,
+            model: gemini_opts.model || Gemini.Live.Models.resolve(:audio),
             system_instruction: gemini_opts.system_instruction
           ] ++
           gemini_callbacks

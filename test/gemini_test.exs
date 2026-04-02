@@ -33,6 +33,7 @@ defmodule Membrane.Gemini.Integration.Test do
       })
       |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Bin{
+        model: "gemini-2.5-flash-native-audio-latest",
         mode: :paced,
         extra_opts: extra_opts
       })
