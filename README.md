@@ -33,6 +33,7 @@ See `examples/talking_demo.exs` for a simple demo that allows conversation with 
 ```
 GEMINI_API_KEY="your API key" elixir examples/talking_demo.exs
 ```
+NOTE: be sure to use headphones to avoid audio feedback, otherwise the LLM might start talking with itself.
 
 ## Copyright and License
 
