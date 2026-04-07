@@ -312,6 +312,20 @@ defmodule Membrane.Gemini.Endpoint do
       do: {[], state}
 
   @impl true
+  def handle_info(
+        {:on_message,
+         %Gemini.Types.Live.ServerMessage{
+           server_content: %Gemini.Types.Live.ServerContent{},
+           usage_metadata: %Gemini.Types.Live.UsageMetadata{} = usage_metadata
+         }},
+        _ctx,
+        state
+      ) do
+    Membrane.Logger.debug("Turn metadata received: #{inspect(usage_metadata)}")
+    {[], state}
+  end
+
+  @impl true
   def handle_info({:on_message, msg}, _ctx, state) do
     Membrane.Logger.warning("Unrecognised message received by session: #{inspect(msg)}")
     {[], state}
