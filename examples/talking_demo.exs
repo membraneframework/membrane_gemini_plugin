@@ -32,9 +32,6 @@ defmodule Gemini.Demo.TextSource do
   @impl true
   def handle_playing(_ctx, state),
     do: {[stream_format: {:output, %Membrane.RemoteStream{type: :bytestream}}], state}
-
-  def handle_info({:text, line}, _ctx, state),
-    do: {[buffer: {:output, %Membrane.Buffer{payload: line}}], state}
 end
 
 defmodule Gemini.Demo.Mic.LivePipeline do
@@ -61,9 +58,6 @@ defmodule Gemini.Demo.Mic.LivePipeline do
 
     {[spec: spec], nil}
   end
-
-  def handle_info({:text, _line} = msg, _ctx, state),
-    do: {[notify_child: {:text_source, msg}], state}
 end
 
 Membrane.Pipeline.start_link(Gemini.Demo.Mic.LivePipeline, [])
