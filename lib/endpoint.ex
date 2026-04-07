@@ -100,7 +100,7 @@ defmodule Membrane.Gemini.Endpoint do
         _ctx,
         %State{session_pid: session_pid, status: status} = state
       ) do
-    case Gemini.Live.Session.send_realtime_input(session_pid, text: payload) do
+    case Gemini.Live.Session.send_text(session_pid, payload) do
       :ok ->
         case status do
           :receiving ->
@@ -229,54 +229,6 @@ defmodule Membrane.Gemini.Endpoint do
         {:on_message,
          %Gemini.Types.Live.ServerMessage{
            server_content: %Gemini.Types.Live.ServerContent{
-             input_transcription: %Gemini.Types.Live.Transcription{text: text}
-           }
-         }},
-        _ctx,
-        state
-      ) do
-    {[event: {:output, %Membrane.Gemini.Events.Transcript{text: text, audio_origin: :client}}],
-     state}
-  end
-
-  @impl true
-  def handle_info(
-        {:on_message,
-         %Gemini.Types.Live.ServerMessage{
-           server_content: %Gemini.Types.Live.ServerContent{
-             output_transcription: %Gemini.Types.Live.Transcription{text: _text}
-           }
-         }},
-        _ctx,
-        %State{status: :text_interrupt} = state
-      ),
-      do: {[], state}
-
-  @impl true
-  def handle_info(
-        {:on_message,
-         %Gemini.Types.Live.ServerMessage{
-           server_content: %Gemini.Types.Live.ServerContent{
-             output_transcription: %Gemini.Types.Live.Transcription{text: text}
-           }
-         }},
-        _ctx,
-        state
-      ),
-      do:
-        maybe_start_response(
-          [
-            {:event,
-             {:output, %Membrane.Gemini.Events.Transcript{text: text, audio_origin: :server}}}
-          ],
-          state
-        )
-
-  @impl true
-  def handle_info(
-        {:on_message,
-         %Gemini.Types.Live.ServerMessage{
-           server_content: %Gemini.Types.Live.ServerContent{
              interrupted: true
            }
          }},
@@ -334,10 +286,58 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
+  def handle_info(
+        {:on_message,
+         %Gemini.Types.Live.ServerMessage{
+           server_content: %Gemini.Types.Live.ServerContent{
+             input_transcription: %Gemini.Types.Live.Transcription{text: _text}
+           }
+         }},
+        _ctx,
+        state
+      ), do:
+    {[], state}
+
+  @impl true
+  def handle_info(
+        {:on_message,
+         %Gemini.Types.Live.ServerMessage{
+           server_content: %Gemini.Types.Live.ServerContent{
+             output_transcription: %Gemini.Types.Live.Transcription{text: _text}
+           }
+         }},
+        _ctx,
+        state
+      ),
+      do: {[], state}
+
+  @impl true
   def handle_info({:on_message, msg}, _ctx, state) do
     Membrane.Logger.warning("Unrecognised message received by session: #{inspect(msg)}")
     {[], state}
   end
+
+  @impl true
+  def handle_info({:on_transcription, {:input, %{"text" => text}}}, _ctx, state),
+    do:
+      {[event: {:output, %Membrane.Gemini.Events.Transcript{audio_origin: :client, text: text}}],
+       state}
+
+  @impl true
+  def handle_info(
+        {:on_transcription, {:output, _text}},
+        _ctx,
+        %State{status: :text_interrupt} = state
+      ),
+      do: {[], state}
+
+  @impl true
+  def handle_info({:on_transcription, {:output, %{"text" => text}}}, _ctx, state),
+    do:
+      maybe_start_response(
+        [event: {:output, %Membrane.Gemini.Events.Transcript{audio_origin: :server, text: text}}],
+        state
+      )
 
   @impl true
   def handle_info({:on_error, msg}, _ctx, state) do
@@ -445,15 +445,12 @@ defmodule Membrane.Gemini.Endpoint do
     Membrane.Logger.debug("Creating new session with config: #{inspect(gemini_opts)}")
     filter_pid = self()
 
-    # NOTE: A sender for `:on_transcription` is unnecessary since we also receive the transcripts
-    # NOTE: as regular `server_content` messages.
-    # NOTE: Same with `:on_session_resumption` - it passes the resume handle as an argument,
-    # NOTE: but so does :on_go_away, which is also the only place where we explicitly need it.
     gemini_callbacks =
       [
         :on_message,
         :on_error,
-        :on_go_away
+        :on_go_away,
+        :on_transcription
       ]
       |> Enum.map(fn callback_atom ->
         {
@@ -470,7 +467,13 @@ defmodule Membrane.Gemini.Endpoint do
           input_audio_transcription: %{},
           output_audio_transcription: %{},
           session_resumption: %{},
-          generation_config: %{response_modalities: [:audio]}
+          generation_config: %{
+            response_modalities: [:audio],
+            thinking_config: %{
+              thinking_budget: 1024,
+              include_thoughts: true
+            }
+          }
         ] ++
           gemini_opts.extra_opts ++
           [
