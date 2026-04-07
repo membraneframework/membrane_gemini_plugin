@@ -173,7 +173,12 @@ defmodule Membrane.Gemini.Integration.Test do
       })
       |> child(:realtimer, Membrane.Realtimer)
       |> via_in(:audio_input)
-      |> child(:gemini, %Membrane.Gemini.Bin{mode: :raw})
+      |> child(:gemini, %Membrane.Gemini.Bin{
+        mode: :raw,
+        # NOTE: The VAD used by Gemini 3.1 doesn't detect
+        # NOTE: TTS voice activity, hence we need to use 2.5 here
+        model: "gemini-2.5-flash-native-audio-latest"
+      })
       |> child(:sink, Membrane.Testing.Sink),
       child(:text_source, %Membrane.Testing.Source{output: []})
       |> via_in(:text_input)
