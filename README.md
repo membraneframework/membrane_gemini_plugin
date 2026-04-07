@@ -21,11 +21,11 @@ end
 ```
 
 The API key can be passed in one of two ways:
-1. Through the `GEMINI_API_KEY` environment variable (this takes precedence).
-2. Through the `:gemini_ex` application config:
+1. Through the `:gemini_ex` application config, e.g. setting it in `config/config.exs`:
 ```elixir
-Application.put_env(:gemini_ex, :api_key, "your API key")
+config :gemini_ex, api_key: "your API key"
 ```
+2. Through the `GEMINI_API_KEY` environment variable, if the application config field is unset.
 
 ## Examples
 
