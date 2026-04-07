@@ -32,6 +32,10 @@ defmodule Gemini.Demo.TextSource do
   @impl true
   def handle_playing(_ctx, state),
     do: {[stream_format: {:output, %Membrane.RemoteStream{type: :bytestream}}], state}
+
+  @impl true
+  def handle_info({:text, text}, _ctx, state),
+    do: {[buffer: {:output, %Membrane.Buffer{payload: text}}], state}
 end
 
 defmodule Gemini.Demo.Mic.LivePipeline do
