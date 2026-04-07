@@ -295,8 +295,8 @@ defmodule Membrane.Gemini.Endpoint do
          }},
         _ctx,
         state
-      ), do:
-    {[], state}
+      ),
+      do: {[], state}
 
   @impl true
   def handle_info(
