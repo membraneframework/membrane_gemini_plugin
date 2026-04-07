@@ -12,7 +12,7 @@ defmodule Membrane.Gemini.Bin do
   is available the new session picks up the previous conversation context;
   otherwise the session starts fresh.
 
-  A `:reset_session` parent notification can also be sent from the parent
+  The parent can send a `:reset_session` notification to #{inspect(__MODULE__)}
   at any time to force an immediate session restart.
 
   In addition to audio buffers, the `:output` pad emits events relevant to the streamed response:
