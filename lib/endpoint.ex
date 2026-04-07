@@ -17,9 +17,8 @@ defmodule Membrane.Gemini.Endpoint do
     flow_control: :push
 
   def_options model: [spec: nil | String.t()],
-    system_instruction: [spec: nil | String.t()],
-    extra_opts: [spec: Keyword.t()]
-
+              system_instruction: [spec: nil | String.t()],
+              extra_opts: [spec: Keyword.t()]
 
   defmodule State do
     @moduledoc false
