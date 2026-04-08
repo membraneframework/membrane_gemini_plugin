@@ -62,7 +62,7 @@ defmodule Membrane.Gemini.Bin do
                 Name of the model that should be used.
                 For details, see `Gemini.Live.Models`.
                 """,
-                default: nil
+                default: "gemini-2.5-flash-native-audio-latest"
               ],
               system_instruction: [
                 spec: nil | String.t(),
