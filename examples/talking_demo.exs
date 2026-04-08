@@ -52,8 +52,22 @@ defmodule Gemini.Demo.Mic.LivePipeline do
       })
       |> via_in(:audio_input)
       |> child(:gemini, Membrane.Gemini.Bin)
-      |> child(:gemini_speaker, Membrane.PortAudio.Sink),
+      |> child(:transcript_printer, %Membrane.Debug.Filter{
+        handle_event: fn
+          %Membrane.Gemini.Events.Transcript{audio_origin: :client, text: text} ->
+            Membrane.Logger.info("user  : #{inspect(text)}")
 
+          %Membrane.Gemini.Events.Transcript{audio_origin: :server, text: text} ->
+            Membrane.Logger.info("gemini: #{inspect(text)}")
+
+          _other ->
+            nil
+        end
+      })
+      |> child(:gemini_speaker, %Membrane.PortAudio.Sink{
+        ringbuffer_size: 32_768,
+        portaudio_buffer_size: 512
+      }),
       # text input for prompting
       child(:text_source, Gemini.Demo.TextSource)
       |> via_in(:text_input)
