@@ -326,6 +326,35 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @impl true
+  def handle_info(
+        {:on_message,
+         %Gemini.Types.Live.ServerMessage{
+           setup_complete: nil,
+           server_content: %Gemini.Types.Live.ServerContent{
+             model_turn: nil,
+             generation_complete: nil,
+             turn_complete: nil,
+             interrupted: nil,
+             grounding_metadata: nil,
+             input_transcription: nil,
+             output_transcription: nil,
+             url_context_metadata: nil,
+             turn_complete_reason: nil
+           },
+           tool_call: nil,
+           tool_call_cancellation: nil,
+           go_away: nil,
+           session_resumption_update: nil,
+           voice_activity: nil,
+           usage_metadata: nil
+         }},
+        _ctx,
+        state
+      ) do
+    {[], state}
+  end
+
+  @impl true
   def handle_info({:on_message, msg}, _ctx, state) do
     Membrane.Logger.warning("Unrecognised message received by session: #{inspect(msg)}")
     {[], state}
