@@ -104,6 +104,22 @@ defmodule Membrane.Gemini.Bin do
                 }
                 ```
 
+                ## Enabling thinking (off by default for Gemini 3 models)
+                ```
+                %Membrane.Gemini.Bin{
+                  extra_opts: [
+                    generation_config: %{
+                      # This has to be set
+                      response_modalities: [:audio],
+                      thinking_config: %{
+                        thinking_budget: 1024,
+                        include_thoughts: true
+                      }
+                    }
+                  ]
+                }
+                ```
+
                 ## Enabling context window compression
                 ```
                 %Membrane.Gemini.Bin{
