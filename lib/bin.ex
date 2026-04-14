@@ -61,6 +61,7 @@ defmodule Membrane.Gemini.Bin do
                 description: """
                 Name of the model that should be used.
                 For details, see `Gemini.Live.Models`.
+                Defaults to `"gemini-2.5-flash-native-audio-latest"`.
                 """,
                 default: "gemini-2.5-flash-native-audio-latest"
               ],
