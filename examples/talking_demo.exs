@@ -52,7 +52,7 @@ defmodule Gemini.Demo.Mic.LivePipeline do
       })
       |> via_in(:audio_input)
       |> child(:gemini, Membrane.Gemini.Bin)
-      |> child(:transcript_printer, %Membrane.Debug.Filter{
+      |> child(:transcript, %Membrane.Debug.Filter{
         handle_event: fn
           %Membrane.Gemini.Events.Transcript{audio_origin: :client, text: text} ->
             Membrane.Logger.info("user  : #{inspect(text)}")
@@ -75,6 +75,16 @@ defmodule Gemini.Demo.Mic.LivePipeline do
     ]
 
     {[spec: spec], nil}
+  end
+
+  @impl true
+  def handle_playing(_ctx, state) do
+    IO.puts("""
+    Pipeline started!
+    Chat with the model directly using your default audio input device,
+    or prompt it by writing lines in the terminal running this process.
+    """)
+    {[], state}
   end
 end
 
