@@ -173,6 +173,7 @@ defmodule Membrane.Gemini.Bin do
       bin_input(:audio_input)
       |> via_in(:audio_input)
       |> child(:gemini, %Membrane.Gemini.Endpoint{
+        mode: mode,
         model: model,
         system_instruction: system_instruction,
         extra_opts: extra_opts
