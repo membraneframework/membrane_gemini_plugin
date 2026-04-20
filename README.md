@@ -15,7 +15,7 @@ The package can be installed by adding `membrane_gemini_plugin` to your list of 
 ```elixir
 def deps do
   [
-    {:membrane_gemini_plugin, "~> 0.1.0"}
+    {:membrane_gemini_plugin, "~> 0.1.1"}
   ]
 end
 ```
@@ -29,7 +29,7 @@ config :gemini_ex, api_key: "your API key"
 
 ## Examples
 
-See `examples/talking_demo.exs` for a simple demo that allows conversation with Gemini and additional text prompting.
+See `examples/talking_demo.exs` for a simple demo that allows conversation with Gemini and additional text prompting (just write your prompt in the process shell and press `enter` / `return` to send).
 ```
 GEMINI_API_KEY="your API key" elixir examples/talking_demo.exs
 ```
