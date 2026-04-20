@@ -543,15 +543,10 @@ defmodule Membrane.Gemini.Endpoint do
   end
 
   @spec signal_response_completed(State.t()) :: {[Membrane.Element.Action.t()], State.t()}
-  defp signal_response_completed(state) do
-    maybe_end_response_action =
-      if state.status == :interrupted,
-        do: [],
-        else: [event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: false}}]
-
+  defp signal_response_completed(%State{status: :receiving} = state) do
     {maybe_eos_action, state} = maybe_eos(%{state | status: :standby})
 
-    {maybe_end_response_action ++ maybe_eos_action, state}
+    {[event: {:output, %Membrane.Gemini.Events.ResponseEnd{interrupted?: false}}] ++ maybe_eos_action, state}
   end
 
   @spec maybe_eos(State.t()) ::
