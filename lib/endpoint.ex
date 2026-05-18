@@ -398,7 +398,7 @@ defmodule Membrane.Gemini.Endpoint do
          state
        ) do
     Membrane.Logger.debug("Turn metadata received: #{inspect(usage_metadata)}")
-    Membrane.Logger.debug("Received turn_complete: true")
+    Membrane.Logger.debug("Received turn_complete: true, status: #{inspect(state.status)}")
     handle_turn_complete(state)
   end
 
@@ -536,6 +536,15 @@ defmodule Membrane.Gemini.Endpoint do
 
   defp handle_turn_complete(%State{mode: :paced, status: :interrupted} = state) do
     {[], %{state | status: :standby}}
+  end
+
+  defp handle_turn_complete(%State{mode: :paced} = state) do
+    # Sometimes user input contains longer pauses between voice activity,
+    # which the model might mistake for a turn end. When more of the voice activity follows,
+    # but the model hasn't sent its response yet, it will issue a single `turn_complete`
+    # message (instead of an `interrupted` message).
+    # This clause is used to ignore it explicitly.
+    {[], state}
   end
 
   defp handle_turn_complete(%State{mode: :raw} = state) do
