@@ -49,7 +49,7 @@ defmodule Membrane.Gemini.Mixfile do
       {:bandit, "~> 1.5", only: :test},
       {:websock_adapter, "~> 0.5", only: :test},
       {:plug, "~> 1.16", only: :test},
-      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:ex_doc, ">= 0.40.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, ">= 0.0.0", only: :dev, runtime: false}
     ]
