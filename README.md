@@ -35,7 +35,7 @@ GEMINI_API_KEY="your API key" elixir examples/talking_demo.exs
 ```
 NOTE: be sure to use headphones to avoid audio feedback, otherwise the LLM might start talking with itself.
 
-For a more advanced example, check out [membrane_gemini_demo](https://github.com/membraneframework/membrane_gemini_demo)
+For a more advanced example, check out [membrane_gemini_demo](https://github.com/membraneframework/membrane_demo/tree/master/membrane_gemini_demo)
 
 ## Copyright and License
 
