@@ -14,27 +14,49 @@ defmodule GeminiMock.Router do
     conn = Plug.Conn.fetch_query_params(conn)
     api_key = Map.get(conn.query_params, "key")
 
-    close_error =
-      case api_key do
-        "mock-api-key" ->
-          nil
+    opts =
+      case scripted_lookup(api_key) do
+        {test_pid, scenario_opts} ->
+          # Scripted mode: the API key is a per-test token registered by
+          # GeminiMock.Scenario.setup!/1; the handler is driven by that test.
+          %{
+            mode: :scripted,
+            test_pid: test_pid,
+            auto_setup: Map.get(scenario_opts, :auto_setup, true)
+          }
 
         nil ->
-          {1008,
-           "Method doesn't allow unregistered callers (callers without established identity). Please use API Key or other form of API c"}
+          close_error =
+            case api_key do
+              "mock-api-key" ->
+                nil
 
-        _invalid ->
-          {1007, "API key not valid. Please pass a valid API key."}
+              nil ->
+                {1008,
+                 "Method doesn't allow unregistered callers (callers without established identity). Please use API Key or other form of API c"}
+
+              _invalid ->
+                {1007, "API key not valid. Please pass a valid API key."}
+            end
+
+          opts = build_handler_opts(conn)
+          if close_error, do: Map.put(opts, :close_error, close_error), else: opts
       end
-
-    opts = build_handler_opts(conn)
-    opts = if close_error, do: Map.put(opts, :close_error, close_error), else: opts
 
     WebSockAdapter.upgrade(conn, GeminiMock.Handler, opts, timeout: 120_000)
   end
 
   match _ do
     send_resp(conn, 404, "Not found")
+  end
+
+  defp scripted_lookup(nil), do: nil
+
+  defp scripted_lookup(api_key) do
+    case Registry.lookup(GeminiMock.Registry, {:scripted, api_key}) do
+      [{test_pid, scenario_opts}] -> {test_pid, scenario_opts}
+      [] -> nil
+    end
   end
 
   # Parse per-connection query params for test scenarios.

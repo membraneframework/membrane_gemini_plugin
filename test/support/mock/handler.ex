@@ -26,7 +26,22 @@ defmodule GeminiMock.Handler do
   # WebSock callbacks
   # ---------------------------------------------------------------------------
 
+  # ---------------------------------------------------------------------------
+  # Scripted mode (driven per-test through GeminiMock.Scenario)
+  # ---------------------------------------------------------------------------
+  #
+  # Every decoded client frame is forwarded to the owning test process and the
+  # server only sends what the test pushes, so the test controls the exact
+  # frame sequence and timing. The `setup` frame is auto-acknowledged with
+  # `setupComplete` (unless auto_setup: false) because the session blocks on it
+  # while connecting.
+
   @impl WebSock
+  def init(%{mode: :scripted} = state) do
+    send(state.test_pid, {:gemini_mock, :connected, self()})
+    {:ok, state}
+  end
+
   def init(opts) do
     state = %{
       setup_done: false,
@@ -45,6 +60,26 @@ defmodule GeminiMock.Handler do
   end
 
   @impl WebSock
+  def handle_in({data, opcode: opcode}, %{mode: :scripted} = state)
+      when opcode in [:text, :binary] do
+    case Jason.decode(data) do
+      {:ok, frame} ->
+        send(state.test_pid, {:gemini_mock, :frame, self(), frame})
+
+        case frame do
+          %{"setup" => _setup} when state.auto_setup ->
+            {:push, [{:text, Jason.encode!(%{"setupComplete" => %{}})}], state}
+
+          _other ->
+            {:ok, state}
+        end
+
+      {:error, reason} ->
+        Logger.warning("GeminiMock: failed to decode incoming frame – #{inspect(reason)}")
+        {:ok, state}
+    end
+  end
+
   def handle_in({data, opcode: opcode}, state) when opcode in [:text, :binary] do
     case Jason.decode(data) do
       {:ok, message} ->
@@ -62,6 +97,14 @@ defmodule GeminiMock.Handler do
   def handle_control(_frame, state), do: {:ok, state}
 
   @impl WebSock
+  def handle_info({:gemini_mock, :push, frames}, %{mode: :scripted} = state) do
+    {:push, Enum.map(frames, &{:text, Jason.encode!(&1)}), state}
+  end
+
+  def handle_info({:gemini_mock, :close, code, reason}, %{mode: :scripted} = state) do
+    {:stop, :normal, {code, reason}, state}
+  end
+
   def handle_info(:send_go_away, state) do
     time_left_s = state.go_away_time_left_ms / 1000
 
@@ -78,6 +121,11 @@ defmodule GeminiMock.Handler do
   def handle_info(_msg, state), do: {:ok, state}
 
   @impl WebSock
+  def terminate(reason, %{mode: :scripted} = state) do
+    send(state.test_pid, {:gemini_mock, :closed, self(), reason})
+    :ok
+  end
+
   def terminate(reason, _state) do
     Logger.debug("GeminiMock: connection terminated – #{inspect(reason)}")
     :ok
@@ -108,7 +156,15 @@ defmodule GeminiMock.Handler do
   defp process_message(%{"realtimeInput" => input}, %{setup_done: true} = state) do
     delay(state.response_delay_ms)
     has_audio = Map.has_key?(input, "audio")
-    {:push, build_audio_responses(has_audio), state}
+
+    # Housekeeping-only messages like {"audioStreamEnd": true} must not
+    # trigger a response; otherwise the audio-source EOS sent at the end of
+    # every pipeline creates a spurious extra response cycle.
+    if has_audio or Map.has_key?(input, "text") do
+      {:push, build_audio_responses(has_audio), state}
+    else
+      {:ok, state}
+    end
   end
 
   defp process_message(msg, state) do

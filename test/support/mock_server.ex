@@ -7,6 +7,7 @@ defmodule GeminiMock.Server do
   @impl Application
   def start(_type, _args) do
     children = [
+      {Registry, keys: :unique, name: GeminiMock.Registry},
       {Bandit, plug: GeminiMock.Router, scheme: :http, port: @port}
     ]
 
