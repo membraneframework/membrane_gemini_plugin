@@ -6,8 +6,6 @@ defmodule Membrane.Gemini.MockWebSocket do
   # Gemini.Client.WebSocket so it can be injected via the :websocket_module
   # option in Gemini.Live.Session.
 
-  require Logger
-
   @mock_host ~c"localhost"
   @mock_path "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
@@ -24,7 +22,9 @@ defmodule Membrane.Gemini.MockWebSocket do
 
   @doc """
   Connects to the local mock server via plain HTTP WebSocket.
-  Passes the API key from the GEMINI_API_KEY environment variable as a query parameter.
+  Passes the API key as a query parameter, taking it from the session's
+  connect opts (populated from the session config) and falling back to the
+  `:gemini_ex` application env.
   """
   @spec connect(atom(), keyword()) :: {:ok, t()} | {:error, term()}
   def connect(_auth_strategy, opts) do
@@ -32,20 +32,20 @@ defmodule Membrane.Gemini.MockWebSocket do
     gun_opts = %{protocols: [:http], transport: :tcp}
 
     case :gun.open(@mock_host, port, gun_opts) do
-      {:ok, pid} -> do_connect(pid)
+      {:ok, pid} -> do_connect(pid, opts)
       {:error, reason} -> {:error, {:open_failed, reason}}
     end
   end
 
-  defp do_connect(pid) do
+  defp do_connect(pid, opts) do
     case :gun.await_up(pid, @connect_timeout) do
-      {:ok, _protocol} -> do_upgrade(pid)
+      {:ok, _protocol} -> do_upgrade(pid, opts)
       {:error, reason} -> {:error, {:connection_failed, reason}}
     end
   end
 
-  defp do_upgrade(pid) do
-    api_key = Application.get_env(:gemini_ex, :api_key)
+  defp do_upgrade(pid, opts) do
+    api_key = Keyword.get(opts, :api_key) || Application.get_env(:gemini_ex, :api_key)
     path = if api_key, do: "#{@mock_path}?key=#{api_key}", else: @mock_path
     headers = [{"content-type", "application/json"}]
     stream_ref = :gun.ws_upgrade(pid, path, headers, %{})
